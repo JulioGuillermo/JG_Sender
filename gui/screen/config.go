@@ -206,12 +206,14 @@ func (p *ConfigUI) Layout(th *material.Theme, gtx layout.Context, w *app.Window,
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					title := material.Label(th, gtx.Metric.DpToSp(ScreenBarHeight-TitleMargin), "Config")
 					title.Color = conf.FGPrimaryColor
-					return layout.Inset{
+					d := layout.Inset{
 						Left: 10,
 					}.Layout(
 						gtx,
 						title.Layout,
 					)
+					d.Size.Y = gtx.Dp(ScreenBarHeight)
+					return d
 				}),
 			)
 		}),
