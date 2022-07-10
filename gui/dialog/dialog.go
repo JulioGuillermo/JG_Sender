@@ -37,8 +37,8 @@ func (p *Dialog) Layout(th *material.Theme, gtx layout.Context, w *app.Window, c
 
 	if p.removing {
 		if p.anim > 0 {
-			p.anim -= conf.AnimSpeed(gtx) / 2
-			if p.anim < 0 {
+			p.anim -= conf.AnimSpeed(gtx)
+			if p.anim <= 0 {
 				p.anim = 0
 				p.Widget = nil
 				return layout.Dimensions{}
@@ -49,7 +49,7 @@ func (p *Dialog) Layout(th *material.Theme, gtx layout.Context, w *app.Window, c
 		gtx.Constraints.Max.X = int(p.anim * float32(gtx.Constraints.Max.X))
 	} else {
 		if p.anim < 1 {
-			p.anim += conf.AnimSpeed(gtx) / 2
+			p.anim += conf.AnimSpeed(gtx)
 			if p.anim > 1 {
 				p.anim = 1
 			}
