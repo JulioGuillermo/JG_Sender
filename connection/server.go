@@ -302,11 +302,11 @@ func (p *Server) explore(connection net.Conn) {
 	elements, err := storage.Explore(string(bpath))
 	// IF err: send error
 	if err != nil {
+		e := err.Error()
 		_, err = connection.Write([]byte{ERROR})
 		if err != nil {
 			return
 		}
-		e := err.Error()
 		_, err = connection.Write(IntToBytes(uint64(len(e))))
 		if err != nil {
 			return
