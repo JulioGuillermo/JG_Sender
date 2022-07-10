@@ -7,6 +7,7 @@ import (
 	"path"
 
 	"github.com/julioguillermo/jg_sender/config"
+	"github.com/julioguillermo/jg_sender/config/storage"
 )
 
 type Server struct {
@@ -60,6 +61,10 @@ func (p *Server) ProcessClient(connection net.Conn) {
 		p.GetMSG(connection)
 	case RESOURCES:
 		p.GetResources(connection)
+	case EXPLORE:
+		p.explore(connection)
+	case GET:
+		p.send(connection)
 	}
 }
 
@@ -250,4 +255,142 @@ func (p *Server) GetResources(connection net.Conn) {
 		file.Close()
 	}
 	onProgress(uint64(len(files)), t_size, t_size)
+}
+
+/*
+Recive:
+	CTL
+	path_size
+	path
+Send:
+	if Error:
+		ERROR_CTL and error
+	else:
+		EXPLORE_CTL
+		Number of elements
+		for elements:
+			is dir
+			path len
+			path
+*/
+func (p *Server) explore(connection net.Conn) {
+	var err error
+	// CTL
+	ctl := make([]byte, 8)
+	_, err = connection.Read(ctl)
+	if err != nil {
+		return
+	}
+	if !CheckCTL(ctl) {
+		return
+	}
+	// Get path len and path
+	p_size := make([]byte, 8)
+	_, err = connection.Read(p_size)
+	if err != nil {
+		return
+	}
+	bpath := make([]byte, BytesToInt(p_size))
+
+	// Read path
+	elements, err := storage.Explore(string(bpath))
+	// IF err: send error
+	if err != nil {
+		_, err = connection.Write([]byte{ERROR})
+		if err != nil {
+			return
+		}
+		e := err.Error()
+		_, err = connection.Write(IntToBytes(uint64(len(e))))
+		if err != nil {
+			return
+		}
+		connection.Write([]byte(e))
+		return
+	}
+
+	// Not error: send ctl -> EXPLORE
+	_, err = connection.Write([]byte{EXPLORE})
+	if err != nil {
+		return
+	}
+	// Send number of elements
+	_, err = connection.Write(IntToBytes(uint64(len(elements))))
+	if err != nil {
+		return
+	}
+
+	// For each element
+	for _, e := range elements {
+		// Send if is dir or file
+		if e.IsDir {
+			_, err = connection.Write([]byte{DIR})
+			if err != nil {
+				return
+			}
+		} else {
+			_, err = connection.Write([]byte{FILE})
+			if err != nil {
+				return
+			}
+		}
+		// Send path len and path
+		_, err = connection.Write(IntToBytes(uint64(len(e.Path))))
+		if err != nil {
+			return
+		}
+		_, err = connection.Write([]byte(e.Path))
+		if err != nil {
+			return
+		}
+	}
+}
+
+/*
+Recive:
+	CTL
+	num of path
+	for each path:
+		path size
+		path
+	send all path width sender
+*/
+func (p *Server) send(connection net.Conn) {
+	var err error
+	// CTL
+	bint := make([]byte, 8)
+	_, err = connection.Read(bint)
+	if err != nil {
+		return
+	}
+	if !CheckCTL(bint) {
+		return
+	}
+
+	// Get num of path
+	_, err = connection.Read(bint)
+	if err != nil {
+		return
+	}
+	// Get paths
+	paths := make([]string, BytesToInt(bint))
+	var bufpath []byte
+	for i := range paths {
+		// Get path len and path
+		_, err = connection.Read(bint)
+		if err != nil {
+			return
+		}
+		bufpath = make([]byte, BytesToInt(bint))
+		_, err = connection.Read(bufpath)
+		if err != nil {
+			return
+		}
+		paths[i] = string(bufpath)
+	}
+
+	// send
+	sender := NewSender()
+	sender.connection = connection
+	sender.sendResources(p.conf, paths, nil, nil)
 }

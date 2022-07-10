@@ -57,6 +57,21 @@ func (p *Sender) SendResources(conf *config.Config, addr *netip.Addr, resources 
 	defer p.Close()
 
 	var err error
+	// Open connection
+	addrPort := netip.AddrPortFrom(*addr, uint16(config.Port))
+	p.connection, err = net.Dial("tcp", addrPort.String())
+	if err != nil {
+		if onError != nil {
+			onError(err)
+		}
+		return
+	}
+
+	p.sendResources(conf, resources, onError, onProgress)
+}
+
+func (p *Sender) sendResources(conf *config.Config, resources []string, onError func(error), onProgress func(uint64, uint64, uint64)) {
+	var err error
 
 	if onError == nil {
 		onError = func(error) {}
@@ -118,13 +133,6 @@ func (p *Sender) SendResources(conf *config.Config, addr *netip.Addr, resources 
 		}
 	}
 
-	// Open connection
-	addrPort := netip.AddrPortFrom(*addr, uint16(config.Port))
-	p.connection, err = net.Dial("tcp", addrPort.String())
-	if err != nil {
-		onError(err)
-		return
-	}
 	// CTL MSG: RESOURCES
 	_, err = p.connection.Write([]byte{RESOURCES})
 	if err != nil {
