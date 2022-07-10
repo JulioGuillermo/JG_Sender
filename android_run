@@ -1,0 +1,7 @@
+#!/usr/bin/zsh
+
+gogio -target android -icon Icon.png -appid com.jg.jg_sender ./
+adb install -r jg_sender.apk
+adb shell am start -d -n com.jg.jg_sender/org.gioui.GioActivity
+
+#/run/media/jg/DATA/Programs/Android/AndroidSDK/build-tools/29.0.3/aapt d xmltree jg_sender.apk AndroidManifest.xml
