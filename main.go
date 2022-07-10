@@ -20,6 +20,7 @@ import (
 )
 
 func main() {
+	os.Setenv("LANG", "en_US.utf8")
 	go func() {
 		th := material.NewTheme(font.JGFonts())
 		conf := config.NewConfig(th)
