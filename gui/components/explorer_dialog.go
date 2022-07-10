@@ -93,10 +93,12 @@ func (p *ExplorerDialog) Layout(th *material.Theme, gtx layout.Context, w *app.W
 	selected := false
 	if p.storages.Clicked() {
 		p.dir = ""
-		p.elements, p.err = storage.Explore(p.dir)
+		p.clear()
+		p.explorer.Explore(p.addr, p.dir, p.onError, p.onPath)
 	} else if p.dirUp.Clicked() {
 		p.dir = path.Dir(p.dir)
-		p.elements, p.err = storage.Explore(p.dir)
+		p.clear()
+		p.explorer.Explore(p.addr, p.dir, p.onError, p.onPath)
 	} else {
 		for _, element := range p.elements {
 			if element.Clickable.Clicked() {
