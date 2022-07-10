@@ -14,6 +14,8 @@ const (
 	ERROR
 )
 
+var CTL = []byte{0, 2, 0, 8, 2, 0, 0, 0}
+
 func IntToBytes(num uint64) []byte {
 	bs := make([]byte, 8)
 	for i := 0; i < 8; i++ {
@@ -31,7 +33,6 @@ func BytesToInt(bs []byte) uint64 {
 }
 
 func CheckCTL(ctl []byte) bool {
-	CTL := []byte{0, 2, 0, 8, 2, 0, 0, 0}
 	if len(ctl) != len(CTL) {
 		return false
 	}

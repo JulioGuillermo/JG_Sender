@@ -44,9 +44,10 @@ type found struct {
 	addr     *netip.Addr
 	os       string
 	anim     float32
+	dim      layout.Dimensions
 	SendMSG  widget.Clickable
 	SendFile widget.Clickable
-	dim      layout.Dimensions
+	explore  widget.Clickable
 }
 
 func NewScannerScreen(conf *config.Config, src SNSource, w *app.Window, newInbox func(components.InboxItemWidget, bool)) *Scanner {
@@ -179,9 +180,10 @@ func (p *Scanner) render(th *material.Theme, gtx layout.Context, w *app.Window, 
 	device := p.devices[index]
 	if device.SendMSG.Clicked() {
 		p.SendMSG(device.addr, device.name)
-	}
-	if device.SendFile.Clicked() {
+	} else if device.SendFile.Clicked() {
 		p.SendFile(device.addr, device.name)
+	} else if device.explore.Clicked() {
+		p.explore(device.addr, device.name)
 	}
 
 	if device.anim < 1 {
@@ -241,6 +243,11 @@ func (p *Scanner) render(th *material.Theme, gtx layout.Context, w *app.Window, 
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 											return device.SendFile.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 												return components.NewIcon(th, gtx, config.ICFile, conf.BGPrimaryColor, 30)
+											})
+										}),
+										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+											return device.explore.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+												return components.NewIcon(th, gtx, config.ICOpenDir, conf.BGPrimaryColor, 30)
 											})
 										}),
 									)
@@ -316,4 +323,9 @@ func (p *Scanner) SendMSG(addr *netip.Addr, to string) {
 func (p *Scanner) SendFile(addr *netip.Addr, to string) {
 	p.file = components.NewFileDialog(addr, to, p.newInbox)
 	p.conf.OpenDialog(p.file.Layout)
+}
+
+func (p *Scanner) explore(addr *netip.Addr, name string) {
+	diag := components.NewExplorerDialog(addr, name, p.newInbox)
+	p.conf.OpenDialog(diag.Layout)
 }

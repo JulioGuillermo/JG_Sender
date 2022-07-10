@@ -67,6 +67,13 @@ func (p *Sender) SendResources(conf *config.Config, addr *netip.Addr, resources 
 		return
 	}
 
+	// CTL MSG: RESOURCES
+	_, err = p.connection.Write([]byte{RESOURCES})
+	if err != nil {
+		onError(err)
+		return
+	}
+
 	p.sendResources(conf, resources, onError, onProgress)
 }
 
@@ -131,13 +138,6 @@ func (p *Sender) sendResources(conf *config.Config, resources []string, onError 
 				tsize += element.size          // add it's size
 			}
 		}
-	}
-
-	// CTL MSG: RESOURCES
-	_, err = p.connection.Write([]byte{RESOURCES})
-	if err != nil {
-		onError(err)
-		return
 	}
 
 	// USER Name

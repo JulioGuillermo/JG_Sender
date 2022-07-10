@@ -10,6 +10,8 @@ import (
 	"github.com/julioguillermo/jg_sender/config/storage"
 )
 
+var Serv *Server
+
 type Server struct {
 	conf   *config.Config
 	Serv   net.Listener
@@ -23,14 +25,14 @@ func InitServer(conf *config.Config) *Server {
 		fmt.Println(err)
 		return nil
 	}
-	serv := &Server{
+	Serv = &Server{
 		conf:   conf,
 		Serv:   server,
 		OnFile: nil,
 		OnMSG:  nil,
 	}
-	go serv.ProcessServer()
-	return serv
+	go Serv.ProcessServer()
+	return Serv
 }
 
 func (p *Server) ProcessServer() {
@@ -291,6 +293,10 @@ func (p *Server) explore(connection net.Conn) {
 		return
 	}
 	bpath := make([]byte, BytesToInt(p_size))
+	_, err = connection.Read(bpath)
+	if err != nil {
+		return
+	}
 
 	// Read path
 	elements, err := storage.Explore(string(bpath))
@@ -358,15 +364,16 @@ Recive:
 func (p *Server) send(connection net.Conn) {
 	var err error
 	// CTL
-	bint := make([]byte, 8)
-	_, err = connection.Read(bint)
+	ctl := make([]byte, len(CTL))
+	_, err = connection.Read(ctl)
 	if err != nil {
 		return
 	}
-	if !CheckCTL(bint) {
+	if !CheckCTL(ctl) {
 		return
 	}
 
+	bint := make([]byte, 8)
 	// Get num of path
 	_, err = connection.Read(bint)
 	if err != nil {

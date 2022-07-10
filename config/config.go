@@ -31,6 +31,7 @@ const (
 	ICScan     = '\uf43c'
 	ICScanStop = '\uf28d'
 	ICSend     = '\uf1d8'
+	ICDOWNLOAD = '\uf019'
 	ICClose    = '\uf658'
 
 	ICAndroid = '\uf17b'
