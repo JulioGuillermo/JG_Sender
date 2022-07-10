@@ -26,6 +26,7 @@ type ConfigUI struct {
 	Connections *components.TextInput
 	Timeout     *components.TextInput
 	BufSize     *components.TextInput
+	AnimTime    *components.TextInput
 
 	reset     widget.Clickable
 	openInbox widget.Clickable
@@ -63,8 +64,9 @@ func NewConfigScreen(c *config.Config) *ConfigUI {
 		Name:        components.NewTextInput("Name", false),
 		Inbox:       components.NewTextInput("Inbox", false),
 		Connections: components.NewTextInput("Connections", false),
-		Timeout:     components.NewTextInput("Timeout", false),
+		Timeout:     components.NewTextInput("Timeout (ms)", false),
 		BufSize:     components.NewTextInput("Buffer size", false),
+		AnimTime:    components.NewTextInput("Animation time (ms)", false),
 		anim:        1,
 	}
 	conf.Name.Validator = func(s string) bool {
@@ -98,6 +100,13 @@ func NewConfigScreen(c *config.Config) *ConfigUI {
 		bsize, err := strconv.ParseUint(s, 10, 64)
 		return err == nil && bsize > 1
 	}
+	conf.AnimTime.Validator = func(s string) bool {
+		if !CheckNum(s) {
+			return false
+		}
+		_, err := strconv.ParseUint(s, 10, 64)
+		return err == nil
+	}
 	conf.list.List.Axis = layout.Vertical
 
 	conf.Load()
@@ -111,6 +120,7 @@ func (p *ConfigUI) Load() {
 	p.Connections.SetText(fmt.Sprint(p.Conf.Connections()))
 	p.Timeout.SetText(fmt.Sprint(p.Conf.Timeout()))
 	p.BufSize.SetText(fmt.Sprint(p.Conf.BufSize()))
+	p.AnimTime.SetText(fmt.Sprint(p.Conf.AnimTime()))
 }
 
 func (p *ConfigUI) Layout(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config) layout.Dimensions {
@@ -149,14 +159,21 @@ func (p *ConfigUI) Layout(th *material.Theme, gtx layout.Context, w *app.Window,
 				p.Conf.SetBufSize(bufsize)
 			}
 		}
+	} else if p.AnimTime.Changed() {
+		if CheckNum(p.AnimTime.Text()) {
+			atime, err := strconv.ParseUint(p.AnimTime.Text(), 10, 64)
+			if err == nil {
+				err = p.Conf.SetAnimTime(atime)
+			}
+		}
 	}
 
 	if p.anim < 1 {
-		p.anim += components.AnimSpeed(gtx) / 2
+		p.anim += conf.AnimSpeed(gtx)
 		if p.anim > 1 {
 			p.anim = 1
 		}
-		op.InvalidateOp{At: gtx.Now.Add(components.Time(gtx))}.Add(gtx.Ops)
+		op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
 		gtx.Constraints.Max.Y = int(p.anim * float32(gtx.Constraints.Max.Y))
 		gtx.Constraints.Max.X = int(p.anim * float32(gtx.Constraints.Max.X))
 	}
@@ -244,6 +261,7 @@ func (p *ConfigUI) Layout(th *material.Theme, gtx layout.Context, w *app.Window,
 								p.GetConfigItem(th, w, conf, p.Connections.Layout),
 								p.GetConfigItem(th, w, conf, p.Timeout.Layout),
 								p.GetConfigItem(th, w, conf, p.BufSize.Layout),
+								p.GetConfigItem(th, w, conf, p.AnimTime.Layout),
 
 								// Theme config
 								// Main colors

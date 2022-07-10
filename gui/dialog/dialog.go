@@ -11,7 +11,6 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"github.com/julioguillermo/jg_sender/config"
-	"github.com/julioguillermo/jg_sender/gui/components"
 )
 
 type Dialog struct {
@@ -38,23 +37,23 @@ func (p *Dialog) Layout(th *material.Theme, gtx layout.Context, w *app.Window, c
 
 	if p.removing {
 		if p.anim > 0 {
-			p.anim -= components.AnimSpeed(gtx) / 2
+			p.anim -= conf.AnimSpeed(gtx) / 2
 			if p.anim < 0 {
 				p.anim = 0
 				p.Widget = nil
 				return layout.Dimensions{}
 			}
-			op.InvalidateOp{At: gtx.Now.Add(components.Time(gtx))}.Add(gtx.Ops)
+			op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
 		}
 		gtx.Constraints.Max.Y = int(p.anim * float32(gtx.Constraints.Max.Y))
 		gtx.Constraints.Max.X = int(p.anim * float32(gtx.Constraints.Max.X))
 	} else {
 		if p.anim < 1 {
-			p.anim += components.AnimSpeed(gtx) / 2
+			p.anim += conf.AnimSpeed(gtx) / 2
 			if p.anim > 1 {
 				p.anim = 1
 			}
-			op.InvalidateOp{At: gtx.Now.Add(components.Time(gtx))}.Add(gtx.Ops)
+			op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
 		}
 		gtx.Constraints.Max.Y = int(p.anim * float32(gtx.Constraints.Max.Y))
 		gtx.Constraints.Max.X = int(p.anim * float32(gtx.Constraints.Max.X))

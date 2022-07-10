@@ -8,10 +8,16 @@ import (
 	"os/user"
 	"path"
 	"runtime"
+	"time"
 
 	"gioui.org/app"
 	"gioui.org/layout"
 	"gioui.org/widget/material"
+)
+
+const (
+	FPS             = 25
+	updatePerSecond = time.Second / FPS
 )
 
 const (
@@ -60,6 +66,7 @@ type Config struct {
 	C_Connections        uint64
 	C_ConnectionsTimeout uint64
 	C_BufSize            uint64
+	C_AnimTime           uint64
 
 	ScreenColor color.NRGBA
 	Shadow      color.NRGBA
@@ -78,6 +85,8 @@ type Config struct {
 
 	openDialog  func(func(*material.Theme, layout.Context, *app.Window, *Config) layout.Dimensions)
 	closeDialog func()
+
+	old time.Time
 }
 
 func NewConfig(th *material.Theme) *Config {
@@ -97,6 +106,7 @@ func (p *Config) Reset() {
 	p.C_Connections = 20
 	p.C_ConnectionsTimeout = 500
 	p.C_BufSize = 1024
+	p.C_AnimTime = 300
 	os.MkdirAll(p.C_InboxDir, 0777)
 
 	p.ScreenColor = color.NRGBA{230, 230, 230, 255}
@@ -155,6 +165,10 @@ func (p *Config) BufSize() uint64 {
 	return p.C_BufSize
 }
 
+func (p *Config) AnimTime() uint64 {
+	return p.C_AnimTime
+}
+
 func (p *Config) SetName(n string) error {
 	p.C_Name = n
 	return p.Save()
@@ -177,6 +191,11 @@ func (p *Config) SetTimeout(n uint64) error {
 
 func (p *Config) SetBufSize(n uint64) error {
 	p.C_BufSize = n
+	return p.Save()
+}
+
+func (p *Config) SetAnimTime(ms uint64) error {
+	p.C_AnimTime = ms
 	return p.Save()
 }
 
@@ -233,4 +252,24 @@ func (p *Config) SetDialogOpener(opener func(func(*material.Theme, layout.Contex
 
 func (p *Config) SetDialogCloser(closer func()) {
 	p.closeDialog = closer
+}
+
+func (p *Config) AnimSpeed(gtx layout.Context) float32 {
+	if p.C_AnimTime == 0 {
+		return 1
+	}
+	t := 1000 / float32(p.C_AnimTime) / float32(FPS)
+	if t > 1 {
+		return 1
+	}
+	return t
+}
+
+func (p *Config) Time(gtx layout.Context) time.Duration {
+	d := gtx.Now.Sub(p.old)
+	if d < 0 {
+		d = -d
+	}
+	p.old = time.Now()
+	return updatePerSecond - d
 }

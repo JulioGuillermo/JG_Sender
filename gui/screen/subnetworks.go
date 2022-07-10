@@ -70,11 +70,11 @@ func (p *Subnetworks) Layout(th *material.Theme, gtx layout.Context, w *app.Wind
 	}
 
 	if p.anim < 1 {
-		p.anim += components.AnimSpeed(gtx) / 2
+		p.anim += conf.AnimSpeed(gtx)
 		if p.anim > 1 {
 			p.anim = 1
 		}
-		op.InvalidateOp{At: gtx.Now.Add(components.Time(gtx))}.Add(gtx.Ops)
+		op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
 		gtx.Constraints.Max.Y = int(p.anim * float32(gtx.Constraints.Max.Y))
 		gtx.Constraints.Max.X = int(p.anim * float32(gtx.Constraints.Max.X))
 	}
@@ -148,21 +148,21 @@ func (p *Subnetworks) render(th *material.Theme, gtx layout.Context, w *app.Wind
 	subnet := p.subnets[index]
 	if subnet.removing {
 		if subnet.anim > 0 {
-			subnet.anim -= components.AnimSpeed(gtx)
+			subnet.anim -= conf.AnimSpeed(gtx)
 			if subnet.anim < 0 {
 				subnet.anim = 0
 			}
-			op.InvalidateOp{At: gtx.Now.Add(components.Time(gtx))}.Add(gtx.Ops)
+			op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
 			gtx.Constraints.Max.X = int(subnet.anim * float32(gtx.Constraints.Max.X))
 		}
 	} else {
 		if subnet.anim < 1 {
-			subnet.anim += components.AnimSpeed(gtx)
+			subnet.anim += conf.AnimSpeed(gtx)
 			if subnet.anim > 1 {
 				subnet.anim = 1
 			}
 			p.list.Position.Offset = p.list.Position.Length
-			op.InvalidateOp{At: gtx.Now.Add(components.Time(gtx))}.Add(gtx.Ops)
+			op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
 			gtx.Constraints.Max.X = int(subnet.anim * float32(gtx.Constraints.Max.X))
 		}
 	}

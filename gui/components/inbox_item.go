@@ -42,11 +42,11 @@ func NewInboxItem(widget InboxItemWidget, in bool) *InboxItem {
 
 func (p *InboxItem) Layout(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config) layout.Dimensions {
 	if p.anim < 1 {
-		p.anim += AnimSpeed(gtx)
+		p.anim += conf.AnimSpeed(gtx)
 		if p.anim > 1 {
 			p.anim = 1
 		}
-		op.InvalidateOp{At: gtx.Now.Add(Time(gtx))}.Add(gtx.Ops)
+		op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
 	}
 
 	marg := layout.UniformInset(10)

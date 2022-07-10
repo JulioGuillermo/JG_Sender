@@ -78,11 +78,11 @@ func (p *Scanner) Layout(th *material.Theme, gtx layout.Context, w *app.Window, 
 	}
 
 	if p.anim < 1 {
-		p.anim += components.AnimSpeed(gtx) / 2
+		p.anim += conf.AnimSpeed(gtx)
 		if p.anim > 1 {
 			p.anim = 1
 		}
-		op.InvalidateOp{At: gtx.Now.Add(components.Time(gtx))}.Add(gtx.Ops)
+		op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
 		gtx.Constraints.Max.Y = int(p.anim * float32(gtx.Constraints.Max.Y))
 		gtx.Constraints.Max.X = int(p.anim * float32(gtx.Constraints.Max.X))
 	}
@@ -184,11 +184,11 @@ func (p *Scanner) render(th *material.Theme, gtx layout.Context, w *app.Window, 
 	}
 
 	if device.anim < 1 {
-		device.anim += components.AnimSpeed(gtx)
+		device.anim += conf.AnimSpeed(gtx)
 		if device.anim > 1 {
 			device.anim = 1
 		}
-		op.InvalidateOp{At: gtx.Now.Add(components.Time(gtx))}.Add(gtx.Ops)
+		op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
 		gtx.Constraints.Max.X = int(device.anim * float32(gtx.Constraints.Max.X))
 	}
 

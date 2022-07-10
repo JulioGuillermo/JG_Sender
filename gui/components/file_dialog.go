@@ -262,11 +262,11 @@ func (p *FileDialog) render(th *material.Theme, gtx layout.Context, w *app.Windo
 	element := p.elements[index]
 
 	if element.Anim < 1 {
-		element.Anim += AnimSpeed(gtx)
+		element.Anim += conf.AnimSpeed(gtx)
 		if element.Anim > 1 {
 			element.Anim = 1
 		}
-		op.InvalidateOp{At: gtx.Now.Add(Time(gtx))}.Add(gtx.Ops)
+		op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
 	}
 
 	d := layout.Flex{

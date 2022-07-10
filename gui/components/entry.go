@@ -62,11 +62,11 @@ func (p *TextInput) Layout(th *material.Theme, gtx layout.Context, w *app.Window
 		}
 	}
 
-	speed := AnimSpeed(gtx)
+	speed := conf.AnimSpeed(gtx)
 	if p.Edit.Focused() {
 		if p.anim < 1 {
 			p.anim += speed
-			op.InvalidateOp{At: gtx.Now.Add(Time(gtx))}.Add(gtx.Ops)
+			op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
 		}
 		if p.anim > 1 {
 			p.anim = 1
@@ -77,7 +77,7 @@ func (p *TextInput) Layout(th *material.Theme, gtx layout.Context, w *app.Window
 	} else {
 		if p.anim > 0 {
 			p.anim -= speed
-			op.InvalidateOp{At: gtx.Now.Add(Time(gtx))}.Add(gtx.Ops)
+			op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
 		}
 		if p.anim < 0 {
 			p.anim = 0

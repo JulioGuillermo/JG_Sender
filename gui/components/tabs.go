@@ -127,7 +127,7 @@ func (p *Tab) Layout(th *material.Theme, gtx layout.Context, w *app.Window, conf
 }
 
 func (p *TabItem) Layout(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config, screen int, parent *Tab) layout.Dimensions {
-	speed := AnimSpeed(gtx)
+	speed := conf.AnimSpeed(gtx)
 
 	if p.Clickable.Clicked() {
 		parent.change = true
@@ -138,7 +138,7 @@ func (p *TabItem) Layout(th *material.Theme, gtx layout.Context, w *app.Window, 
 	if parent.screen == screen {
 		if p.anim < 1 {
 			p.anim += speed
-			op.InvalidateOp{At: gtx.Now.Add(Time(gtx))}.Add(gtx.Ops)
+			op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
 		}
 		if p.anim > 1 {
 			p.anim = 1
