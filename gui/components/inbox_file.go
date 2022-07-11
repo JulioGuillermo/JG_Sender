@@ -19,10 +19,11 @@ type InboxFile struct {
 
 	list widget.List
 
-	size  uint64
-	pro   uint64
-	nfile uint64
-	err   error
+	size   uint64
+	pro    uint64
+	nfile  uint64
+	tfiles uint64
+	err    error
 
 	w *app.Window
 
@@ -70,10 +71,11 @@ func NewInboxFile(addr, name, file string, w *app.Window, onCancel func()) *Inbo
 	return inboxFile
 }
 
-func (p *InboxFile) SetProgress(n, pro, size uint64) {
+func (p *InboxFile) SetProgress(n, tn, pro, size uint64) {
 	p.size = size
 	p.pro = pro
 	p.nfile = n
+	p.tfiles = tn
 	if p.w != nil {
 		p.w.Invalidate()
 	}
@@ -162,7 +164,7 @@ func (p *InboxFile) Layout(th *material.Theme, gtx layout.Context, w *app.Window
 					if p.pro == p.size {
 						txt = "Completed"
 					} else {
-						txt = fmt.Sprintf("[%d / %d] %.0f %%", p.nfile, p.size, float32(p.pro)/float32(p.size)*100)
+						txt = fmt.Sprintf("[%d / %d] %.0f %%", p.nfile, p.tfiles, float32(p.pro)/float32(p.size)*100)
 					}
 					lab := material.Label(th, 20, txt)
 					lab.Color = conf.BGPrimaryColor

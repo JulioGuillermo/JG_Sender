@@ -82,7 +82,7 @@ func run(th *material.Theme, w *app.Window, conf *config.Config) error {
 		notify()
 		w.Invalidate()
 	}
-	server.OnFile = func(addr, user, file string, onCancel func()) (func(uint64, uint64, uint64), func(error)) {
+	server.OnFile = func(addr, user, file string, onCancel func()) (func(uint64, uint64, uint64, uint64), func(error)) {
 		file_item := components.NewInboxFile(addr, user, file, w, onCancel)
 		inbox_screen.NewInbox(file_item, true)
 		notify()

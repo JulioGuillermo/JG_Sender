@@ -53,7 +53,7 @@ for f -> files:
 		-[256]bytes(f)
 */
 
-func (p *Sender) SendResources(conf *config.Config, addr *netip.Addr, resources []string, onError func(error), onProgress func(uint64, uint64, uint64)) {
+func (p *Sender) SendResources(conf *config.Config, addr *netip.Addr, resources []string, onError func(error), onProgress func(uint64, uint64, uint64, uint64)) {
 	defer p.Close()
 
 	var err error
@@ -77,14 +77,14 @@ func (p *Sender) SendResources(conf *config.Config, addr *netip.Addr, resources 
 	p.sendResources(conf, resources, onError, onProgress)
 }
 
-func (p *Sender) sendResources(conf *config.Config, resources []string, onError func(error), onProgress func(uint64, uint64, uint64)) {
+func (p *Sender) sendResources(conf *config.Config, resources []string, onError func(error), onProgress func(uint64, uint64, uint64, uint64)) {
 	var err error
 
 	if onError == nil {
 		onError = func(error) {}
 	}
 	if onProgress == nil {
-		onProgress = func(uint64, uint64, uint64) {}
+		onProgress = func(uint64, uint64, uint64, uint64) {}
 	}
 
 	// Getting total size and files
@@ -214,8 +214,8 @@ func (p *Sender) sendResources(conf *config.Config, resources []string, onError 
 			}
 			pro += uint64(t)
 			t_pro += uint64(t)
-			onProgress(uint64(i), t_pro, tsize)
+			onProgress(uint64(i), uint64(len(files)), t_pro, tsize)
 		}
 	}
-	onProgress(uint64(len(files)), tsize, tsize)
+	onProgress(uint64(len(files)), uint64(len(files)), tsize, tsize)
 }

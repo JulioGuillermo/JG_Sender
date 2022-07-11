@@ -78,7 +78,7 @@ func (p *FileDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Windo
 					p.elements, p.err = storage.Explore(p.dir)
 				} else {
 					sender := connection.NewSender()
-					var onProgress func(uint64, uint64, uint64)
+					var onProgress func(uint64, uint64, uint64, uint64)
 					var onError func(error)
 					if p.newInboxItem != nil {
 						inbox_file := NewInboxFile(p.addr.String(), p.name, element.Name+"\n", w, sender.Close)
@@ -86,7 +86,7 @@ func (p *FileDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Windo
 						onError = inbox_file.SetError
 						p.newInboxItem(inbox_file, false)
 					} else {
-						onProgress = func(uint64, uint64, uint64) {}
+						onProgress = func(uint64, uint64, uint64, uint64) {}
 						onError = func(error) {}
 					}
 					conf.CloseDialog()
@@ -107,7 +107,7 @@ func (p *FileDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Windo
 				}
 			}
 			sender := connection.NewSender()
-			var onProgress func(uint64, uint64, uint64)
+			var onProgress func(uint64, uint64, uint64, uint64)
 			var onError func(error)
 			if p.newInboxItem != nil {
 				inbox_file := NewInboxFile(p.addr.String(), p.name, n, w, sender.Close)
@@ -115,7 +115,7 @@ func (p *FileDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Windo
 				onError = inbox_file.SetError
 				p.newInboxItem(inbox_file, false)
 			} else {
-				onProgress = func(uint64, uint64, uint64) {}
+				onProgress = func(uint64, uint64, uint64, uint64) {}
 				onError = func(error) {}
 			}
 			conf.CloseDialog()

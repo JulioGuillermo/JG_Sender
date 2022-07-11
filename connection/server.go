@@ -15,7 +15,7 @@ var Serv *Server
 type Server struct {
 	conf   *config.Config
 	Serv   net.Listener
-	OnFile func(addr, user, files string, onCancel func()) (func(uint64, uint64, uint64), func(error))
+	OnFile func(addr, user, files string, onCancel func()) (func(uint64, uint64, uint64, uint64), func(error))
 	OnMSG  func(addr, name, msg string)
 }
 
@@ -187,7 +187,7 @@ func (p *Server) GetResources(connection net.Conn) {
 	}
 
 	var (
-		onProgress func(uint64, uint64, uint64)
+		onProgress func(uint64, uint64, uint64, uint64)
 		onError    func(error)
 	)
 	if p.OnFile != nil {
@@ -195,7 +195,7 @@ func (p *Server) GetResources(connection net.Conn) {
 			connection.Close()
 		})
 	} else {
-		onProgress = func(uint64, uint64, uint64) {}
+		onProgress = func(uint64, uint64, uint64, uint64) {}
 		onError = func(error) {}
 	}
 	// Recive files
@@ -252,11 +252,11 @@ func (p *Server) GetResources(connection net.Conn) {
 			}
 			pro += uint64(t)
 			t_pro += uint64(t)
-			onProgress(uint64(i), t_pro, t_size)
+			onProgress(uint64(i), uint64(len(files)), t_pro, t_size)
 		}
 		file.Close()
 	}
-	onProgress(uint64(len(files)), t_size, t_size)
+	onProgress(uint64(len(files)), uint64(len(files)), t_size, t_size)
 }
 
 /*
