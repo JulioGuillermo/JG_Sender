@@ -162,7 +162,7 @@ func (p *InboxFile) Layout(th *material.Theme, gtx layout.Context, w *app.Window
 					if p.pro == p.size {
 						txt = "Completed"
 					} else {
-						txt = fmt.Sprintf("[%d] %.0f %%", p.nfile, float32(p.pro)/float32(p.size)*100)
+						txt = fmt.Sprintf("[%d / %d] %.0f %%", p.nfile, p.size, float32(p.pro)/float32(p.size)*100)
 					}
 					lab := material.Label(th, 20, txt)
 					lab.Color = conf.BGPrimaryColor
