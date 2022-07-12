@@ -67,6 +67,8 @@ func (p *Server) ProcessClient(connection net.Conn) {
 		p.explore(connection)
 	case GET:
 		p.send(connection)
+	case EXEC_CMD:
+		p.exec_cmd(connection)
 	}
 }
 
@@ -400,4 +402,13 @@ func (p *Server) send(connection net.Conn) {
 	sender := NewSender()
 	sender.connection = connection
 	sender.sendResources(p.conf, paths, nil, nil)
+}
+
+func (p *Server) exec_cmd(connection net.Conn) {
+	ctl := make([]byte, 8)
+	_, err := connection.Read(ctl)
+	if err != nil || !CheckCTL(ctl) {
+		return
+	}
+	NewExecutor(connection)
 }

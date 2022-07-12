@@ -37,7 +37,7 @@ const (
 	ICScan     = '\uf43c'
 	ICScanStop = '\uf28d'
 	ICSend     = '\uf1d8'
-	ICDOWNLOAD = '\uf019'
+	ICDownload = '\uf019'
 	ICClose    = '\uf658'
 
 	ICAndroid = '\uf17b'
@@ -53,6 +53,7 @@ const (
 	ICDir      = '\uf114'
 	ICFile     = '\uf016'
 	ICMSG      = '\uf430'
+	ICCMD      = '\uf489'
 
 	ICSave  = '\uf0c7'
 	ICReset = '\uf0e2'

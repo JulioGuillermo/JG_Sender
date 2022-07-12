@@ -7,6 +7,7 @@ const (
 
 	EXPLORE
 	GET
+	EXEC_CMD
 
 	DIR
 	FILE
