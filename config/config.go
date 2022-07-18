@@ -134,7 +134,8 @@ func (p *Config) Load() bool {
 	if err != nil {
 		return false
 	}
-	return json.Unmarshal(buf, p) == nil
+	c := json.Unmarshal(buf, p) == nil
+	return c
 }
 
 func (p *Config) Save() error {

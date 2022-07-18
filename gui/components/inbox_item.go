@@ -29,7 +29,6 @@ type InboxItem struct {
 
 	In     bool
 	Widget InboxItemWidget
-	dim    layout.Dimensions
 }
 
 func NewInboxItem(widget InboxItemWidget, in bool) *InboxItem {
@@ -61,9 +60,18 @@ func (p *InboxItem) Layout(th *material.Theme, gtx layout.Context, w *app.Window
 	d := marg.Layout(
 		gtx,
 		func(gtx layout.Context) layout.Dimensions {
+			macro := op.Record(gtx.Ops)
+			dim := layout.UniformInset(10).Layout(
+				gtx,
+				func(gtx layout.Context) layout.Dimensions {
+					return p.Widget.Layout(th, gtx, w, conf)
+				},
+			)
+			call := macro.Stop()
+
 			var col color.NRGBA
 			var tails_x float32
-			tails_y := float32(p.dim.Size.Y)
+			tails_y := float32(dim.Size.Y)
 			tails_w := float32(gtx.Dp(SmallMargin))
 			tails_h := float32(gtx.Dp(CornerRadious))
 			if p.In {
@@ -71,7 +79,7 @@ func (p *InboxItem) Layout(th *material.Theme, gtx layout.Context, w *app.Window
 				tails_x = -float32(gtx.Dp(SmallMargin))
 			} else {
 				col = conf.SendedColor
-				tails_x = float32(p.dim.Size.X + gtx.Dp(SmallMargin))
+				tails_x = float32(dim.Size.X + gtx.Dp(SmallMargin))
 				tails_w = -tails_w
 			}
 
@@ -87,16 +95,11 @@ func (p *InboxItem) Layout(th *material.Theme, gtx layout.Context, w *app.Window
 			paint.Fill(gtx.Ops, col)
 			stack.Pop()
 
-			rec := clip.UniformRRect(image.Rect(0, 0, p.dim.Size.X, p.dim.Size.Y), gtx.Dp(CornerRadious))
+			rec := clip.UniformRRect(image.Rect(0, 0, dim.Size.X, dim.Size.Y), gtx.Dp(CornerRadious))
 			paint.FillShape(gtx.Ops, col, rec.Op(gtx.Ops))
 
-			p.dim = layout.UniformInset(10).Layout(
-				gtx,
-				func(gtx layout.Context) layout.Dimensions {
-					return p.Widget.Layout(th, gtx, w, conf)
-				},
-			)
-			return p.dim
+			call.Add(gtx.Ops)
+			return dim
 		},
 	)
 

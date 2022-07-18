@@ -10,6 +10,7 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"gioui.org/x/component"
 	"github.com/julioguillermo/jg_sender/config"
 	"github.com/julioguillermo/jg_sender/gui/components"
 )
@@ -17,6 +18,8 @@ import (
 type Inbox struct {
 	conf *config.Config
 	anim float32
+
+	appbar *component.AppBar
 
 	list  widget.List
 	items []*components.InboxItem
@@ -26,6 +29,12 @@ func NewInboxScreen(conf *config.Config) *Inbox {
 	inbox := &Inbox{
 		conf: conf,
 	}
+
+	modal := component.NewModal()
+	appbar := component.NewAppBar(modal)
+	appbar.Title = "Inbox"
+	inbox.appbar = appbar
+
 	inbox.list.List.Axis = layout.Vertical
 	return inbox
 }
@@ -55,22 +64,7 @@ func (p *Inbox) Layout(th *material.Theme, gtx layout.Context, w *app.Window, co
 	}.Layout(
 		gtx,
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			rec := clip.Rect{
-				Min: image.Pt(0, 0),
-				Max: image.Pt(gtx.Constraints.Max.X, gtx.Dp(ScreenBarHeight)),
-			}
-			paint.FillShape(gtx.Ops, conf.BGPrimaryColor, rec.Op())
-
-			title := material.Label(th, gtx.Metric.DpToSp(ScreenBarHeight-TitleMargin), "Inbox")
-			title.Color = conf.FGPrimaryColor
-			d := layout.Inset{
-				Left: 10,
-			}.Layout(
-				gtx,
-				title.Layout,
-			)
-			d.Size.Y = gtx.Dp(ScreenBarHeight)
-			return d
+			return p.appbar.Layout(gtx, th, "Inbox", "...")
 		}),
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 			return material.List(th, &p.list).Layout(

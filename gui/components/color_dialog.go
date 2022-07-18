@@ -30,7 +30,6 @@ type ColorItem struct {
 
 type ColorDialog struct {
 	close  widget.Clickable
-	dim    layout.Dimensions
 	colors []*ColorItem
 	list   widget.List
 
@@ -133,54 +132,46 @@ func (p *ColorDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Wind
 	if gtx.Constraints.Max.Y > gtx.Dp(600) {
 		gtx.Constraints.Max.Y = gtx.Dp(600)
 	}
-	rec := clip.UniformRRect(image.Rect(0, 0, p.dim.Size.X, p.dim.Size.Y), gtx.Dp(20))
-	paint.FillShape(gtx.Ops, conf.BGColor, rec.Op(gtx.Ops))
-
-	p.dim = layout.UniformInset(10).Layout(
+	dim := layout.Flex{
+		Axis: layout.Vertical,
+	}.Layout(
 		gtx,
-		func(gtx layout.Context) layout.Dimensions {
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			return layout.Flex{
-				Axis: layout.Vertical,
+				Axis: layout.Horizontal,
 			}.Layout(
 				gtx,
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return layout.Flex{
-						Axis: layout.Horizontal,
-					}.Layout(
-						gtx,
-						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-							title := material.Label(th, 20, "Select a color")
-							title.Color = conf.BGPrimaryColor
-							return title.Layout(gtx)
-						}),
-						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							return p.close.Layout(
-								gtx,
-								func(gtx layout.Context) layout.Dimensions {
-									return NewIcon(th, gtx, config.ICClose, conf.DangerColor, 30)
-								},
-							)
-						}),
-					)
-				}),
 				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-					return material.List(th, &p.list).Layout(
+					title := material.Label(th, 20, "Select a color")
+					title.Color = conf.BGPrimaryColor
+					return title.Layout(gtx)
+				}),
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					return p.close.Layout(
 						gtx,
-						len(p.colors),
-						func(gtx layout.Context, index int) layout.Dimensions {
-							return p.colors[index].Layout(th, gtx, w, conf, p.OnSelect)
+						func(gtx layout.Context) layout.Dimensions {
+							return NewIcon(th, gtx, config.ICClose, conf.DangerColor, 30)
 						},
 					)
 				}),
 			)
-		},
+		}),
+		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+			return material.List(th, &p.list).Layout(
+				gtx,
+				len(p.colors),
+				func(gtx layout.Context, index int) layout.Dimensions {
+					return p.colors[index].Layout(th, gtx, w, conf, p.OnSelect)
+				},
+			)
+		}),
 	)
 
 	if p.close.Clicked() {
 		conf.CloseDialog()
 	}
 
-	return p.dim
+	return dim
 }
 
 func (p *ColorItem) Layout(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config, onSelect func(color.NRGBA)) layout.Dimensions {

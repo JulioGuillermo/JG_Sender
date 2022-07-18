@@ -2,6 +2,7 @@ package screen
 
 import (
 	"image"
+	"image/color"
 	"net/netip"
 
 	"gioui.org/app"
@@ -13,6 +14,7 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"gioui.org/x/component"
 	"github.com/julioguillermo/jg_sender/config"
 	"github.com/julioguillermo/jg_sender/connection"
 	"github.com/julioguillermo/jg_sender/gui/components"
@@ -37,6 +39,12 @@ type Scanner struct {
 	file *components.FileDialog
 
 	newInbox func(components.InboxItemWidget, bool)
+
+	card   *components.Card
+	appbar *component.AppBar
+
+	layoutH layout.Flex
+	layoutV layout.Flex
 }
 
 type found struct {
@@ -49,7 +57,7 @@ type found struct {
 	SendFile widget.Clickable
 }
 
-func NewScannerScreen(conf *config.Config, src SNSource, w *app.Window, newInbox func(components.InboxItemWidget, bool)) *Scanner {
+func NewScannerScreen(th *material.Theme, conf *config.Config, src SNSource, w *app.Window, newInbox func(components.InboxItemWidget, bool)) *Scanner {
 	sn := &Scanner{
 		scanner:  connection.NewScanner(conf),
 		src:      src,
@@ -58,7 +66,49 @@ func NewScannerScreen(conf *config.Config, src SNSource, w *app.Window, newInbox
 		progress: -1,
 		win:      w,
 		newInbox: newInbox,
+		card:     components.NewSimpleCard(conf.BGColor, 20, 10, 10),
 	}
+
+	modal := component.NewModal()
+	appbar := component.NewAppBar(modal)
+	appbar.Title = "Scanner"
+	appbar.SetActions([]component.AppBarAction{{
+		Layout: func(gtx layout.Context, bg, fg color.NRGBA) layout.Dimensions {
+			return material.Clickable(gtx, &sn.scan, func(gtx layout.Context) layout.Dimensions {
+				if sn.scanner.Running {
+					c := material.ProgressCircle(th, float32(sn.progress))
+					c.Color = conf.FGPrimaryColor
+					return layout.Stack{
+						Alignment: layout.Center,
+					}.Layout(
+						gtx,
+						layout.Stacked(func(gtx layout.Context) layout.Dimensions {
+							size := gtx.Dp(ScreenBarHeight)
+							gtx.Constraints.Min.X = size
+							gtx.Constraints.Min.Y = size
+							gtx.Constraints.Max.X = size
+							gtx.Constraints.Max.Y = size
+							return layout.UniformInset(5).Layout(
+								gtx,
+								func(gtx layout.Context) layout.Dimensions {
+									return c.Layout(gtx)
+								},
+							)
+						}),
+						layout.Stacked(func(gtx layout.Context) layout.Dimensions {
+							return components.NewIcon(th, gtx, config.ICScanStop, conf.FGPrimaryColor, ScreenBarHeight-20)
+						}),
+					)
+				}
+				return components.NewIcon(th, gtx, config.ICScan, conf.FGPrimaryColor, ScreenBarHeight)
+			})
+		},
+	}}, []component.OverflowAction{})
+	sn.appbar = appbar
+
+	sn.layoutH.Alignment = layout.Middle
+	sn.layoutH.Axis = layout.Horizontal
+	sn.layoutV.Axis = layout.Vertical
 
 	sn.list.List.Axis = layout.Vertical
 	sn.scanner.Found = sn.OnFound
@@ -79,12 +129,13 @@ func (p *Scanner) Layout(th *material.Theme, gtx layout.Context, w *app.Window, 
 
 	if p.anim < 1 {
 		p.anim += conf.AnimSpeed(gtx)
-		if p.anim > 1 {
+		if p.anim >= 1 {
 			p.anim = 1
+		} else {
+			gtx.Constraints.Max.Y = int(p.anim * float32(gtx.Constraints.Max.Y))
+			gtx.Constraints.Max.X = int(p.anim * float32(gtx.Constraints.Max.X))
 		}
 		op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
-		gtx.Constraints.Max.Y = int(p.anim * float32(gtx.Constraints.Max.Y))
-		gtx.Constraints.Max.X = int(p.anim * float32(gtx.Constraints.Max.X))
 	}
 	gtx.Constraints.Min = gtx.Constraints.Max
 
@@ -94,64 +145,12 @@ func (p *Scanner) Layout(th *material.Theme, gtx layout.Context, w *app.Window, 
 	}
 	paint.FillShape(gtx.Ops, conf.ScreenColor, rec.Op())
 
-	return layout.Flex{
-		Axis: layout.Vertical,
-	}.Layout(
+	p.card.Color = conf.BGColor
+
+	return p.layoutV.Layout(
 		gtx,
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			rec := clip.Rect{
-				Min: image.Pt(0, 0),
-				Max: image.Pt(gtx.Constraints.Max.X, gtx.Dp(ScreenBarHeight)),
-			}
-			paint.FillShape(gtx.Ops, conf.BGPrimaryColor, rec.Op())
-
-			return layout.Flex{
-				Axis:      layout.Horizontal,
-				Spacing:   layout.SpaceBetween,
-				Alignment: layout.Middle,
-			}.Layout(
-				gtx,
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					title := material.Label(th, gtx.Metric.DpToSp(ScreenBarHeight-TitleMargin), "Connections")
-					title.Color = conf.FGPrimaryColor
-					return layout.Inset{
-						Left: 10,
-					}.Layout(
-						gtx,
-						title.Layout,
-					)
-				}),
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return material.Clickable(gtx, &p.scan, func(gtx layout.Context) layout.Dimensions {
-						if p.scanner.Running {
-							c := material.ProgressCircle(th, float32(p.progress))
-							c.Color = conf.FGPrimaryColor
-							return layout.Stack{
-								Alignment: layout.Center,
-							}.Layout(
-								gtx,
-								layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-									size := gtx.Dp(ScreenBarHeight)
-									gtx.Constraints.Min.X = size
-									gtx.Constraints.Min.Y = size
-									gtx.Constraints.Max.X = size
-									gtx.Constraints.Max.Y = size
-									return layout.UniformInset(5).Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return c.Layout(gtx)
-										},
-									)
-								}),
-								layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-									return components.NewIcon(th, gtx, config.ICScanStop, conf.FGPrimaryColor, ScreenBarHeight-20)
-								}),
-							)
-						}
-						return components.NewIcon(th, gtx, config.ICScan, conf.FGPrimaryColor, ScreenBarHeight)
-					})
-				}),
-			)
+			return p.appbar.Layout(gtx, th, "Connections", "...")
 		}),
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 			return material.List(th, &p.list).Layout(
@@ -192,77 +191,58 @@ func (p *Scanner) render(th *material.Theme, gtx layout.Context, w *app.Window, 
 		gtx.Constraints.Max.X = int(device.anim * float32(gtx.Constraints.Max.X))
 	}
 
-	d := layout.UniformInset(10).Layout(
+	d := p.card.Layout(
 		gtx,
+		conf,
 		func(gtx layout.Context) layout.Dimensions {
-			card := clip.UniformRRect(image.Rect(0, 0, gtx.Constraints.Max.X, device.dim.Size.Y+gtx.Dp(insets*2)), gtx.Dp(20))
-			paint.FillShape(gtx.Ops, conf.BGColor, card.Op(gtx.Ops))
-
-			return layout.UniformInset(insets).Layout(
+			return p.layoutH.Layout(
 				gtx,
-				func(gtx layout.Context) layout.Dimensions {
-					return layout.Flex{
-						Axis:      layout.Horizontal,
-						Alignment: layout.Start,
-					}.Layout(
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					return components.NewIcon(th, gtx, p.GetOSIcon(device.os), conf.BGPrimaryColor, unit.Dp(float32(device.dim.Size.Y)/gtx.Metric.PxPerDp))
+				}),
+				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+					device.dim = p.layoutV.Layout(
 						gtx,
 						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							return layout.Inset{
-								Left: 5,
+							d := layout.Flex{
+								Axis: layout.Horizontal,
 							}.Layout(
 								gtx,
-								func(gtx layout.Context) layout.Dimensions {
-									return components.NewIcon(th, gtx, p.GetOSIcon(device.os), conf.BGPrimaryColor, unit.Dp(float32(device.dim.Size.Y)/gtx.Metric.PxPerDp))
-								},
+								layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+									name := material.Label(th, title_size, device.name)
+									name.Color = conf.BGPrimaryColor
+									name.Font.Weight = text.Bold
+									return name.Layout(gtx)
+								}),
+								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+									return device.SendMSG.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+										return components.NewIcon(th, gtx, config.ICMSG, conf.BGPrimaryColor, 30)
+									})
+								}),
+								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+									return device.SendFile.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+										return components.NewIcon(th, gtx, config.ICFile, conf.BGPrimaryColor, 30)
+									})
+								}),
 							)
+							rec := clip.Rect{
+								Min: image.Pt(0, d.Size.Y),
+								Max: image.Pt(d.Size.X, d.Size.Y+gtx.Dp(2)),
+							}
+							paint.FillShape(gtx.Ops, conf.BGPrimaryColor, rec.Op())
+							return d
 						}),
-						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-							device.dim = layout.Flex{
-								Axis: layout.Vertical,
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							return layout.Inset{
+								Top: space_between,
 							}.Layout(
 								gtx,
-								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-									d := layout.Flex{
-										Axis: layout.Horizontal,
-									}.Layout(
-										gtx,
-										layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-											name := material.Label(th, title_size, device.name)
-											name.Color = conf.BGPrimaryColor
-											name.Font.Weight = text.Bold
-											return name.Layout(gtx)
-										}),
-										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-											return device.SendMSG.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-												return components.NewIcon(th, gtx, config.ICMSG, conf.BGPrimaryColor, 30)
-											})
-										}),
-										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-											return device.SendFile.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-												return components.NewIcon(th, gtx, config.ICFile, conf.BGPrimaryColor, 30)
-											})
-										}),
-									)
-									rec := clip.Rect{
-										Min: image.Pt(0, d.Size.Y),
-										Max: image.Pt(d.Size.X, d.Size.Y+gtx.Dp(2)),
-									}
-									paint.FillShape(gtx.Ops, conf.BGPrimaryColor, rec.Op())
-									return d
-								}),
-								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-									return layout.Inset{
-										Top: space_between,
-									}.Layout(
-										gtx,
-										material.Label(th, info_size, device.os+" - "+device.addr.String()).Layout,
-									)
-								}),
+								material.Label(th, info_size, device.os+" - "+device.addr.String()).Layout,
 							)
-							return device.dim
 						}),
 					)
-				},
+					return device.dim
+				}),
 			)
 		},
 	)

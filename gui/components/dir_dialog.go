@@ -18,7 +18,6 @@ import (
 )
 
 type DirDialog struct {
-	dim   layout.Dimensions
 	close widget.Clickable
 
 	err error
@@ -53,9 +52,6 @@ func (p *DirDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Window
 	if gtx.Constraints.Max.Y > gtx.Dp(500) {
 		gtx.Constraints.Max.Y = gtx.Dp(500)
 	}
-	rec := clip.UniformRRect(image.Rect(0, 0, p.dim.Size.X, p.dim.Size.Y), gtx.Dp(20))
-	paint.FillShape(gtx.Ops, conf.BGColor, rec.Op(gtx.Ops))
-
 	if p.open.Clicked() {
 		if p.onOpen != nil && p.dir != "" {
 			conf.CloseDialog()
@@ -78,129 +74,124 @@ func (p *DirDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Window
 		}
 	}
 
-	p.dim = layout.UniformInset(10).Layout(
+	dim := layout.Flex{
+		Axis: layout.Vertical,
+	}.Layout(
 		gtx,
-		func(gtx layout.Context) layout.Dimensions {
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			return layout.Flex{
-				Axis: layout.Vertical,
+				Axis: layout.Horizontal,
+			}.Layout(
+				gtx,
+				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+					to := material.Label(th, 20, "Open a directory")
+					to.Color = conf.BGPrimaryColor
+					return to.Layout(gtx)
+				}),
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					return p.close.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return NewIcon(th, gtx, config.ICClose, conf.DangerColor, 30)
+						},
+					)
+				}),
+			)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return layout.Flex{
+				Axis:      layout.Horizontal,
+				Alignment: layout.Middle,
 			}.Layout(
 				gtx,
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return layout.Flex{
-						Axis: layout.Horizontal,
-					}.Layout(
-						gtx,
-						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-							to := material.Label(th, 20, "Open a directory")
-							to.Color = conf.BGPrimaryColor
-							return to.Layout(gtx)
-						}),
-						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							return p.close.Layout(
-								gtx,
-								func(gtx layout.Context) layout.Dimensions {
-									return NewIcon(th, gtx, config.ICClose, conf.DangerColor, 30)
-								},
-							)
-						}),
-					)
-				}),
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return layout.Flex{
-						Axis:      layout.Horizontal,
-						Alignment: layout.Middle,
-					}.Layout(
-						gtx,
-						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							return material.Clickable(gtx, &p.storages, func(gtx layout.Context) layout.Dimensions {
-								return NewIcon(th, gtx, config.ICStorages, conf.FGColor, 30)
-							})
-						}),
-						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-							list := material.List(th, &p.dirlist)
-							list.Indicator.MinorWidth = 0
-							list.Indicator.CornerRadius = 0
-							list.Indicator.MajorMinLen = 0
-							return list.Layout(
-								gtx,
-								1,
-								func(gtx layout.Context, index int) layout.Dimensions {
-									lab := material.Label(th, 13, p.dir)
-									return lab.Layout(gtx)
-								},
-							)
-						}),
-						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							return material.Clickable(gtx, &p.dirUp, func(gtx layout.Context) layout.Dimensions {
-								return NewIcon(th, gtx, config.ICDirUp, conf.FGColor, 30)
-							})
-						}),
-					)
-				}),
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					if p.err == nil {
-						return layout.Dimensions{
-							Size: image.Pt(0, 0),
-						}
-					}
-					to := material.Label(th, 13, p.err.Error())
-					to.Color = conf.DangerColor
-					return to.Layout(gtx)
+					return material.Clickable(gtx, &p.storages, func(gtx layout.Context) layout.Dimensions {
+						return NewIcon(th, gtx, config.ICStorages, conf.FGColor, 30)
+					})
 				}),
 				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-					return material.List(th, &p.list).Layout(
+					list := material.List(th, &p.dirlist)
+					list.Indicator.MinorWidth = 0
+					list.Indicator.CornerRadius = 0
+					list.Indicator.MajorMinLen = 0
+					return list.Layout(
 						gtx,
-						len(p.elements),
+						1,
 						func(gtx layout.Context, index int) layout.Dimensions {
-							return p.render(th, gtx, w, conf, index)
+							lab := material.Label(th, 13, p.dir)
+							return lab.Layout(gtx)
 						},
 					)
 				}),
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return layout.Flex{
-						Axis: layout.Horizontal,
-					}.Layout(
-						gtx,
-						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-							return layout.Dimensions{
-								Size: image.Pt(gtx.Constraints.Max.X, 0),
-							}
-						}),
-						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							var col color.NRGBA
-							if p.dir == "" {
-								col = conf.Shadow
-							} else {
-								col = conf.BGPrimaryColor
-							}
-							return material.Clickable(gtx, &p.open, func(gtx layout.Context) layout.Dimensions {
-								return layout.Flex{
-									Axis:      layout.Horizontal,
-									Alignment: layout.Middle,
-								}.Layout(
-									gtx,
-									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										return NewIcon(th, gtx, config.ICOpenDir, col, 40)
-									}),
-									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										lab := material.Label(th, 20, "Open")
-										lab.Color = col
-										return lab.Layout(gtx)
-									}),
-								)
-							})
-						}),
-					)
+					return material.Clickable(gtx, &p.dirUp, func(gtx layout.Context) layout.Dimensions {
+						return NewIcon(th, gtx, config.ICDirUp, conf.FGColor, 30)
+					})
 				}),
 			)
-		},
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			if p.err == nil {
+				return layout.Dimensions{
+					Size: image.Pt(0, 0),
+				}
+			}
+			to := material.Label(th, 13, p.err.Error())
+			to.Color = conf.DangerColor
+			return to.Layout(gtx)
+		}),
+		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+			return material.List(th, &p.list).Layout(
+				gtx,
+				len(p.elements),
+				func(gtx layout.Context, index int) layout.Dimensions {
+					return p.render(th, gtx, w, conf, index)
+				},
+			)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return layout.Flex{
+				Axis: layout.Horizontal,
+			}.Layout(
+				gtx,
+				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+					return layout.Dimensions{
+						Size: image.Pt(gtx.Constraints.Max.X, 0),
+					}
+				}),
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					var col color.NRGBA
+					if p.dir == "" {
+						col = conf.Shadow
+					} else {
+						col = conf.BGPrimaryColor
+					}
+					return material.Clickable(gtx, &p.open, func(gtx layout.Context) layout.Dimensions {
+						return layout.Flex{
+							Axis:      layout.Horizontal,
+							Alignment: layout.Middle,
+						}.Layout(
+							gtx,
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								return NewIcon(th, gtx, config.ICOpenDir, col, 40)
+							}),
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								lab := material.Label(th, 20, "Open")
+								lab.Color = col
+								return lab.Layout(gtx)
+							}),
+						)
+					})
+				}),
+			)
+		}),
 	)
 
 	if p.close.Clicked() {
 		conf.CloseDialog()
 	}
 
-	return p.dim
+	return dim
 }
 
 func (p *DirDialog) render(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config, index int) layout.Dimensions {

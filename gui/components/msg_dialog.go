@@ -45,84 +45,77 @@ func (p *MSGDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Window
 	if gtx.Constraints.Max.Y > gtx.Dp(200) {
 		gtx.Constraints.Max.Y = gtx.Dp(200)
 	}
-	rec := clip.UniformRRect(image.Rect(0, 0, p.dim.Size.X, p.dim.Size.Y), gtx.Dp(20))
-	paint.FillShape(gtx.Ops, conf.BGColor, rec.Op(gtx.Ops))
 
-	p.dim = layout.UniformInset(10).Layout(
+	dim := layout.Flex{
+		Axis: layout.Horizontal,
+	}.Layout(
 		gtx,
-		func(gtx layout.Context) layout.Dimensions {
+		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 			return layout.Flex{
-				Axis: layout.Horizontal,
+				Axis: layout.Vertical,
 			}.Layout(
 				gtx,
-				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-					return layout.Flex{
-						Axis: layout.Vertical,
-					}.Layout(
-						gtx,
-						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							to := material.Label(th, 20, "MSG to: "+p.name)
-							to.Color = conf.BGPrimaryColor
-							return to.Layout(gtx)
-						}),
-						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							to := material.Label(th, 13, p.addr.String())
-							to.Color = conf.FGColor
-							return to.Layout(gtx)
-						}),
-						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							if p.err == nil {
-								return layout.Dimensions{
-									Size: image.Pt(0, 0),
-								}
-							}
-							to := material.Label(th, 13, p.err.Error())
-							to.Color = conf.DangerColor
-							return to.Layout(gtx)
-						}),
-						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-							gtx.Constraints.Min = gtx.Constraints.Max
-							d := material.Editor(th, &p.entry, "").Layout(gtx)
-							rec := clip.Rect{
-								Min: image.Pt(0, d.Size.Y),
-								Max: image.Pt(d.Size.X, d.Size.Y+gtx.Dp(1)),
-							}
-							paint.FillShape(gtx.Ops, conf.BGPrimaryColor, rec.Op())
-							return d
-						}),
-					)
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					to := material.Label(th, 20, "MSG to: "+p.name)
+					to.Color = conf.BGPrimaryColor
+					return to.Layout(gtx)
 				}),
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return layout.Flex{
-						Axis:    layout.Vertical,
-						Spacing: layout.SpaceBetween,
-					}.Layout(
+					to := material.Label(th, 13, p.addr.String())
+					to.Color = conf.FGColor
+					return to.Layout(gtx)
+				}),
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					if p.err == nil {
+						return layout.Dimensions{
+							Size: image.Pt(0, 0),
+						}
+					}
+					to := material.Label(th, 13, p.err.Error())
+					to.Color = conf.DangerColor
+					return to.Layout(gtx)
+				}),
+				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+					gtx.Constraints.Min = gtx.Constraints.Max
+					d := material.Editor(th, &p.entry, "").Layout(gtx)
+					rec := clip.Rect{
+						Min: image.Pt(0, d.Size.Y),
+						Max: image.Pt(d.Size.X, d.Size.Y+gtx.Dp(1)),
+					}
+					paint.FillShape(gtx.Ops, conf.BGPrimaryColor, rec.Op())
+					return d
+				}),
+			)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return layout.Flex{
+				Axis:    layout.Vertical,
+				Spacing: layout.SpaceBetween,
+			}.Layout(
+				gtx,
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					return p.close.Layout(
 						gtx,
-						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							return p.close.Layout(
-								gtx,
-								func(gtx layout.Context) layout.Dimensions {
-									return NewIcon(th, gtx, config.ICClose, conf.DangerColor, 30)
-								},
-							)
-						}),
-						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-							return layout.Dimensions{
-								Size: image.Pt(0, gtx.Constraints.Max.Y),
-							}
-						}),
-						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							return p.send.Layout(
-								gtx,
-								func(gtx layout.Context) layout.Dimensions {
-									return NewIcon(th, gtx, config.ICSend, conf.BGPrimaryColor, 30)
-								},
-							)
-						}),
+						func(gtx layout.Context) layout.Dimensions {
+							return NewIcon(th, gtx, config.ICClose, conf.DangerColor, 30)
+						},
+					)
+				}),
+				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+					return layout.Dimensions{
+						Size: image.Pt(0, gtx.Constraints.Max.Y),
+					}
+				}),
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					return p.send.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return NewIcon(th, gtx, config.ICSend, conf.BGPrimaryColor, 30)
+						},
 					)
 				}),
 			)
-		},
+		}),
 	)
 
 	if p.send.Clicked() {
@@ -141,5 +134,5 @@ func (p *MSGDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Window
 		conf.CloseDialog()
 	}
 
-	return p.dim
+	return dim
 }

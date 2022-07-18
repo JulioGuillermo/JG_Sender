@@ -80,7 +80,20 @@ func (p *Dialog) Layout(th *material.Theme, gtx layout.Context, w *app.Window, c
 			)
 		}),
 		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-			return p.Widget(th, gtx, w, conf)
+			macro := op.Record(gtx.Ops)
+			dim := layout.UniformInset(10).Layout(
+				gtx,
+				func(gtx layout.Context) layout.Dimensions {
+					return p.Widget(th, gtx, w, conf)
+				},
+			)
+			call := macro.Stop()
+
+			rec := clip.UniformRRect(image.Rect(0, 0, dim.Size.X, dim.Size.Y), gtx.Dp(20))
+			paint.FillShape(gtx.Ops, conf.BGColor, rec.Op(gtx.Ops))
+
+			call.Add(gtx.Ops)
+			return dim
 		}),
 	)
 }

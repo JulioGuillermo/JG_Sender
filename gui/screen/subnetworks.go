@@ -2,6 +2,7 @@ package screen
 
 import (
 	"image"
+	"image/color"
 	"net/netip"
 
 	"gioui.org/app"
@@ -11,6 +12,7 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"gioui.org/x/component"
 	"github.com/julioguillermo/jg_sender/config"
 	"github.com/julioguillermo/jg_sender/connection"
 	"github.com/julioguillermo/jg_sender/gui/components"
@@ -22,6 +24,9 @@ type Subnetworks struct {
 	list    widget.List
 	subnets []*subnet
 	anim    float32
+
+	appbar *component.AppBar
+	card   *components.Card
 }
 
 type subnet struct {
@@ -29,15 +34,27 @@ type subnet struct {
 	delete   widget.Clickable
 	anim     float32
 	removing bool
-	dim      layout.Dimensions
 }
 
-func NewSubnetworksScreen(conf *config.Config) *Subnetworks {
+func NewSubnetworksScreen(th *material.Theme, conf *config.Config) *Subnetworks {
 	sn := &Subnetworks{
 		conf: conf,
 		anim: 1,
+		card: components.NewSimpleCard(conf.BGColor, 20, 10, 5),
 	}
 	sn.list.List.Axis = layout.Vertical
+
+	modal := component.NewModal()
+	appbar := component.NewAppBar(modal)
+	appbar.Title = "Subnetworks"
+	appbar.SetActions([]component.AppBarAction{{
+		Layout: func(gtx layout.Context, bg, fg color.NRGBA) layout.Dimensions {
+			return material.Clickable(gtx, &sn.add, func(gtx layout.Context) layout.Dimensions {
+				return components.NewIcon(th, gtx, config.ICNewSubnet, conf.FGPrimaryColor, ScreenBarHeight)
+			})
+		},
+	}}, []component.OverflowAction{})
+	sn.appbar = appbar
 
 	subnets := connection.GetIPS()
 	for _, s := range subnets {
@@ -71,7 +88,7 @@ func (p *Subnetworks) Layout(th *material.Theme, gtx layout.Context, w *app.Wind
 
 	if p.anim < 1 {
 		p.anim += conf.AnimSpeed(gtx)
-		if p.anim > 1 {
+		if p.anim >= 1 {
 			p.anim = 1
 		}
 		op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
@@ -79,12 +96,6 @@ func (p *Subnetworks) Layout(th *material.Theme, gtx layout.Context, w *app.Wind
 		gtx.Constraints.Max.X = int(p.anim * float32(gtx.Constraints.Max.X))
 	}
 	gtx.Constraints.Min = gtx.Constraints.Max
-
-	rec := clip.Rect{
-		Min: image.Pt(0, 0),
-		Max: gtx.Constraints.Max,
-	}
-	paint.FillShape(gtx.Ops, conf.ScreenColor, rec.Op())
 
 	for i, sn := range p.subnets {
 		if sn.removing {
@@ -98,39 +109,19 @@ func (p *Subnetworks) Layout(th *material.Theme, gtx layout.Context, w *app.Wind
 		}
 	}
 
+	rec := clip.Rect{
+		Min: image.Pt(0, 0),
+		Max: gtx.Constraints.Max,
+	}
+	paint.FillShape(gtx.Ops, conf.ScreenColor, rec.Op())
+
+	p.card.Color = conf.BGColor
 	return layout.Flex{
 		Axis: layout.Vertical,
 	}.Layout(
 		gtx,
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			rec := clip.Rect{
-				Min: image.Pt(0, 0),
-				Max: image.Pt(gtx.Constraints.Max.X, gtx.Dp(ScreenBarHeight)),
-			}
-			paint.FillShape(gtx.Ops, conf.BGPrimaryColor, rec.Op())
-
-			return layout.Flex{
-				Axis:      layout.Horizontal,
-				Spacing:   layout.SpaceBetween,
-				Alignment: layout.Middle,
-			}.Layout(
-				gtx,
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					title := material.Label(th, gtx.Metric.DpToSp(ScreenBarHeight-TitleMargin), "Subnetworks")
-					title.Color = conf.FGPrimaryColor
-					return layout.Inset{
-						Left: 10,
-					}.Layout(
-						gtx,
-						title.Layout,
-					)
-				}),
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return material.Clickable(gtx, &p.add, func(gtx layout.Context) layout.Dimensions {
-						return components.NewIcon(th, gtx, config.ICNewSubnet, conf.FGPrimaryColor, ScreenBarHeight)
-					})
-				}),
-			)
+			return p.appbar.Layout(gtx, th, "Subnetworks", "...")
 		}),
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 			return material.List(th, &p.list).Layout(
@@ -167,36 +158,28 @@ func (p *Subnetworks) render(th *material.Theme, gtx layout.Context, w *app.Wind
 		}
 	}
 
-	d := layout.UniformInset(10).Layout(
+	d := p.card.Layout(
 		gtx,
+		conf,
 		func(gtx layout.Context) layout.Dimensions {
-			card := clip.UniformRRect(image.Rect(0, 0, gtx.Constraints.Max.X, subnet.dim.Size.Y), gtx.Dp(20))
-			paint.FillShape(gtx.Ops, conf.BGColor, card.Op(gtx.Ops))
-
-			subnet.dim = layout.UniformInset(5).Layout(
+			return layout.Stack{
+				Alignment: layout.NE,
+			}.Layout(
 				gtx,
-				func(gtx layout.Context) layout.Dimensions {
-					return layout.Stack{
-						Alignment: layout.NE,
-					}.Layout(
+				layout.Expanded(func(gtx layout.Context) layout.Dimensions {
+					return layout.UniformInset(10).Layout(
 						gtx,
-						layout.Expanded(func(gtx layout.Context) layout.Dimensions {
-							return layout.UniformInset(10).Layout(
-								gtx,
-								func(gtx layout.Context) layout.Dimensions {
-									return subnet.edit.Layout(th, gtx, w, conf)
-								},
-							)
-						}),
-						layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-							return subnet.delete.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								return components.NewIcon(th, gtx, config.ICDelete, conf.DangerColor, 30)
-							})
-						}),
+						func(gtx layout.Context) layout.Dimensions {
+							return subnet.edit.Layout(th, gtx, w, conf)
+						},
 					)
-				},
+				}),
+				layout.Stacked(func(gtx layout.Context) layout.Dimensions {
+					return subnet.delete.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						return components.NewIcon(th, gtx, config.ICDelete, conf.DangerColor, 30)
+					})
+				}),
 			)
-			return subnet.dim
 		},
 	)
 	d.Size.Y = int(subnet.anim * float32(d.Size.Y))

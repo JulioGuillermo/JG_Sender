@@ -11,6 +11,7 @@ import (
 	"gioui.org/op"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
+	"gioui.org/x/notify"
 	"github.com/julioguillermo/jg_sender/config"
 	"github.com/julioguillermo/jg_sender/connection"
 	"github.com/julioguillermo/jg_sender/font"
@@ -46,9 +47,9 @@ func run(th *material.Theme, w *app.Window, conf *config.Config) error {
 	th.TextSize = unit.Sp(20)
 
 	config_screen := screen.NewConfigScreen(conf)
-	subnet_screen := screen.NewSubnetworksScreen(conf)
+	subnet_screen := screen.NewSubnetworksScreen(th, conf)
 	inbox_screen := screen.NewInboxScreen(conf)
-	scanner_screen := screen.NewScannerScreen(conf, subnet_screen, w, inbox_screen.NewInbox)
+	scanner_screen := screen.NewScannerScreen(th, conf, subnet_screen, w, inbox_screen.NewInbox)
 
 	tabs := components.NewTab(
 		0,
@@ -71,21 +72,22 @@ func run(th *material.Theme, w *app.Window, conf *config.Config) error {
 		dlg.RemoveWidget()
 	})
 
-	notify := func() {
+	newNotification := func(title, text string) {
 		if tabs.ScreenIndex() != 2 {
 			tabs.Notify(2, true)
+			notify.Push(title, text)
 		}
 	}
 
 	server.OnMSG = func(addr, name, msg string) {
 		inbox_screen.NewInbox(components.NewMSG(addr, name, msg), true)
-		notify()
+		newNotification("MSG from "+name, msg)
 		w.Invalidate()
 	}
 	server.OnFile = func(addr, user, file string, onCancel func()) (func(uint64, uint64, uint64, uint64), func(error)) {
 		file_item := components.NewInboxFile(addr, user, file, w, onCancel)
 		inbox_screen.NewInbox(file_item, true)
-		notify()
+		newNotification("File from "+user, file)
 		w.Invalidate()
 		return file_item.SetProgress, file_item.SetError
 	}

@@ -14,6 +14,7 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"gioui.org/x/component"
 	"github.com/julioguillermo/jg_sender/config"
 	"github.com/julioguillermo/jg_sender/gui/components"
 )
@@ -32,8 +33,10 @@ type ConfigUI struct {
 	openInbox widget.Clickable
 	list      widget.List
 
+	appbar *component.AppBar
+	card   *components.Card
+
 	anim float32
-	size layout.Dimensions
 
 	// colors clickables
 	bg         widget.Clickable
@@ -68,7 +71,15 @@ func NewConfigScreen(c *config.Config) *ConfigUI {
 		BufSize:     components.NewTextInput("Buffer size", false),
 		AnimTime:    components.NewTextInput("Animation time (ms)", false),
 		anim:        1,
+
+		card: components.NewSimpleCard(c.BGColor, 20, 10, 10),
 	}
+
+	modal := component.NewModal()
+	appbar := component.NewAppBar(modal)
+	appbar.Title = "Config"
+	conf.appbar = appbar
+
 	conf.Name.Validator = func(s string) bool {
 		return s != ""
 	}
@@ -163,14 +174,14 @@ func (p *ConfigUI) Layout(th *material.Theme, gtx layout.Context, w *app.Window,
 		if CheckNum(p.AnimTime.Text()) {
 			atime, err := strconv.ParseUint(p.AnimTime.Text(), 10, 64)
 			if err == nil {
-				err = p.Conf.SetAnimTime(atime)
+				p.Conf.SetAnimTime(atime)
 			}
 		}
 	}
 
 	if p.anim < 1 {
 		p.anim += conf.AnimSpeed(gtx)
-		if p.anim > 1 {
+		if p.anim >= 1 {
 			p.anim = 1
 		}
 		op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
@@ -185,48 +196,24 @@ func (p *ConfigUI) Layout(th *material.Theme, gtx layout.Context, w *app.Window,
 	}
 	paint.FillShape(gtx.Ops, conf.ScreenColor, rec.Op())
 
+	p.card.Color = conf.BGColor
 	return layout.Flex{
 		Axis:    layout.Vertical,
 		Spacing: layout.SpaceEnd,
 	}.Layout(
 		gtx,
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			rec := clip.Rect{
-				Min: image.Pt(0, 0),
-				Max: image.Pt(gtx.Constraints.Max.X, gtx.Dp(ScreenBarHeight)),
-			}
-			paint.FillShape(gtx.Ops, conf.BGPrimaryColor, rec.Op())
-
-			return layout.Flex{
-				Axis:      layout.Horizontal,
-				Spacing:   layout.SpaceBetween,
-				Alignment: layout.Middle,
-			}.Layout(
-				gtx,
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					title := material.Label(th, gtx.Metric.DpToSp(ScreenBarHeight-TitleMargin), "Config")
-					title.Color = conf.FGPrimaryColor
-					d := layout.Inset{
-						Left: 10,
-					}.Layout(
-						gtx,
-						title.Layout,
-					)
-					d.Size.Y = gtx.Dp(ScreenBarHeight)
-					return d
-				}),
-			)
+			return p.appbar.Layout(gtx, th, "Config", "...")
 		}),
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 			return material.List(th, &p.list).Layout(
 				gtx,
 				1,
 				func(gtx layout.Context, index int) layout.Dimensions {
-					return layout.UniformInset(10).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-						card := clip.UniformRRect(image.Rect(0, 0, gtx.Constraints.Max.X, p.size.Size.Y), gtx.Dp(20))
-						paint.FillShape(gtx.Ops, conf.BGColor, card.Op(gtx.Ops))
-
-						p.size = layout.UniformInset(10).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					return p.card.Layout(
+						gtx,
+						conf,
+						func(gtx layout.Context) layout.Dimensions {
 							return layout.Flex{
 								Axis: layout.Vertical,
 							}.Layout(
@@ -253,7 +240,7 @@ func (p *ConfigUI) Layout(th *material.Theme, gtx layout.Context, w *app.Window,
 														return components.NewIcon(th, gtx, config.ICOpenDir, conf.FGColor, 40)
 													}),
 													layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-														return material.Label(th, 20, "Select").Layout(gtx)
+														return material.Label(th, th.TextSize, "Select").Layout(gtx)
 													}),
 												)
 											})
@@ -333,7 +320,7 @@ func (p *ConfigUI) Layout(th *material.Theme, gtx layout.Context, w *app.Window,
 												}.Layout(
 													gtx,
 													layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-														lab := material.Label(th, 25, "Android settings")
+														lab := material.Label(th, th.TextSize*1.3, "Android settings")
 														lab.Color = conf.BGPrimaryColor
 														return lab.Layout(gtx)
 													}),
@@ -345,16 +332,16 @@ func (p *ConfigUI) Layout(th *material.Theme, gtx layout.Context, w *app.Window,
 													}),
 
 													layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-														lab := material.Label(th, 20, "Android storage permission")
+														lab := material.Label(th, th.TextSize, "Android storage permission")
 														lab.Color = conf.DangerColor
 														return lab.Layout(gtx)
 													}),
 													layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-														lab := material.Label(th, 20, "Please allow the app to read and write internal and external storages.")
+														lab := material.Label(th, th.TextSize, "Please allow the app to read and write internal and external storages.")
 														return lab.Layout(gtx)
 													}),
 													layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-														lab := material.Label(th, 13, "Settings >> Aplications >> JG_Sender >> Permission")
+														lab := material.Label(th, th.TextSize*0.7, "Settings >> Aplications >> JG_Sender >> Permission")
 														return lab.Layout(gtx)
 													}),
 												)
@@ -389,7 +376,7 @@ func (p *ConfigUI) Layout(th *material.Theme, gtx layout.Context, w *app.Window,
 																		return components.NewIcon(th, gtx, config.ICReset, conf.DangerColor, gtx.Metric.SpToDp(20))
 																	}),
 																	layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-																		lab := material.Label(th, 20, "Reset settings")
+																		lab := material.Label(th, th.TextSize, "Reset settings")
 																		lab.Color = conf.DangerColor
 																		return lab.Layout(gtx)
 																	}),
@@ -403,9 +390,8 @@ func (p *ConfigUI) Layout(th *material.Theme, gtx layout.Context, w *app.Window,
 									)
 								}),
 							)
-						})
-						return p.size
-					})
+						},
+					)
 				},
 			)
 		}),
@@ -445,7 +431,7 @@ func (p *ConfigUI) RenderColor(th *material.Theme, w *app.Window, conf *config.C
 		}.Layout(
 			gtx,
 			layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-				return material.Label(th, 20, name).Layout(gtx)
+				return material.Label(th, th.TextSize, name).Layout(gtx)
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return components.NewColorBox(gtx, click, c)
