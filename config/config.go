@@ -13,6 +13,7 @@ import (
 	"gioui.org/app"
 	"gioui.org/layout"
 	"gioui.org/widget/material"
+	"github.com/google/uuid"
 )
 
 const (
@@ -62,6 +63,8 @@ const (
 type Config struct {
 	th *material.Theme
 
+	UUID string
+
 	C_Name               string
 	C_InboxDir           string
 	C_Connections        uint64
@@ -96,6 +99,10 @@ func NewConfig(th *material.Theme) *Config {
 	}
 	if !conf.Load() {
 		conf.Reset()
+	}
+	if conf.UUID == "" {
+		conf.UUID = uuid.NewString()
+		conf.Save()
 	}
 	conf.UpdateColors()
 	return conf
