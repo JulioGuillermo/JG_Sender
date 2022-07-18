@@ -17,7 +17,6 @@ import (
 type MSGDialog struct {
 	addr  *netip.Addr
 	name  string
-	dim   layout.Dimensions
 	entry widget.Editor
 
 	send  widget.Clickable
