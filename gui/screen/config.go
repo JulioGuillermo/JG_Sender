@@ -6,15 +6,16 @@ import (
 	"image/color"
 	"os"
 	"strconv"
+	"time"
 
 	"gioui.org/app"
 	"gioui.org/layout"
-	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"gioui.org/x/component"
+	"gioui.org/x/outlay"
 	"github.com/julioguillermo/jg_sender/config"
 	"github.com/julioguillermo/jg_sender/gui/components"
 )
@@ -36,7 +37,7 @@ type ConfigUI struct {
 	appbar *component.AppBar
 	card   *components.Card
 
-	anim float32
+	anim outlay.Animation
 
 	// colors clickables
 	bg         widget.Clickable
@@ -70,7 +71,6 @@ func NewConfigScreen(c *config.Config) *ConfigUI {
 		Timeout:     components.NewTextInput("Timeout (ms)", false),
 		BufSize:     components.NewTextInput("Buffer size", false),
 		AnimTime:    components.NewTextInput("Animation time (ms)", false),
-		anim:        1,
 
 		card: components.NewSimpleCard(c.BGColor, 20, 10, 10),
 	}
@@ -131,7 +131,7 @@ func (p *ConfigUI) Load() {
 	p.Connections.SetText(fmt.Sprint(p.Conf.Connections()))
 	p.Timeout.SetText(fmt.Sprint(p.Conf.Timeout()))
 	p.BufSize.SetText(fmt.Sprint(p.Conf.BufSize()))
-	p.AnimTime.SetText(fmt.Sprint(p.Conf.AnimTime()))
+	p.AnimTime.SetText(fmt.Sprint(p.Conf.C_AnimTime))
 }
 
 func (p *ConfigUI) Layout(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config) layout.Dimensions {
@@ -179,14 +179,10 @@ func (p *ConfigUI) Layout(th *material.Theme, gtx layout.Context, w *app.Window,
 		}
 	}
 
-	if p.anim < 1 {
-		p.anim += conf.AnimSpeed(gtx)
-		if p.anim >= 1 {
-			p.anim = 1
-		}
-		op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
-		gtx.Constraints.Max.Y = int(p.anim * float32(gtx.Constraints.Max.Y))
-		gtx.Constraints.Max.X = int(p.anim * float32(gtx.Constraints.Max.X))
+	animPro := p.anim.Progress(gtx)
+	if animPro < 1 {
+		gtx.Constraints.Max.Y = int(animPro * float32(gtx.Constraints.Max.Y))
+		gtx.Constraints.Max.X = int(animPro * float32(gtx.Constraints.Max.X))
 	}
 	gtx.Constraints.Min = gtx.Constraints.Max
 
@@ -448,9 +444,10 @@ func (p *ConfigUI) RenderColor(th *material.Theme, w *app.Window, conf *config.C
 }
 
 func (p *ConfigUI) InAnim() {
-	p.anim = 0
+	p.anim.Duration = p.Conf.AnimTime()
+	p.anim.Start(time.Now())
 }
 
-func (p *ConfigUI) Stopped() bool {
-	return p.anim == 1
+func (p *ConfigUI) Stopped(gtx layout.Context) bool {
+	return !p.anim.Animating(gtx)
 }

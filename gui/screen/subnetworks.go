@@ -4,15 +4,16 @@ import (
 	"image"
 	"image/color"
 	"net/netip"
+	"time"
 
 	"gioui.org/app"
 	"gioui.org/layout"
-	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"gioui.org/x/component"
+	"gioui.org/x/outlay"
 	"github.com/julioguillermo/jg_sender/config"
 	"github.com/julioguillermo/jg_sender/connection"
 	"github.com/julioguillermo/jg_sender/gui/components"
@@ -23,7 +24,7 @@ type Subnetworks struct {
 	add     widget.Clickable
 	list    widget.List
 	subnets []*subnet
-	anim    float32
+	anim    outlay.Animation
 
 	appbar *component.AppBar
 	card   *components.Card
@@ -32,14 +33,13 @@ type Subnetworks struct {
 type subnet struct {
 	edit     *components.TextInput
 	delete   widget.Clickable
-	anim     float32
+	anim     outlay.Animation
 	removing bool
 }
 
 func NewSubnetworksScreen(th *material.Theme, conf *config.Config) *Subnetworks {
 	sn := &Subnetworks{
 		conf: conf,
-		anim: 1,
 		card: components.NewSimpleCard(conf.BGColor, 20, 10, 5),
 	}
 	sn.list.List.Axis = layout.Vertical
@@ -71,7 +71,10 @@ func (p *subnet) Validator(s string) bool {
 
 func (p *Subnetworks) New(sn string) *subnet {
 	subnet := &subnet{
-		anim: 0,
+		anim: outlay.Animation{
+			Duration:  p.conf.AnimTime(),
+			StartTime: time.Now(),
+		},
 	}
 	subnet.edit = components.NewTextInput("Subnetwork", false)
 	subnet.edit.SetText(sn)
@@ -83,28 +86,24 @@ func (p *Subnetworks) New(sn string) *subnet {
 func (p *Subnetworks) Layout(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config) layout.Dimensions {
 	if p.add.Clicked() {
 		p.New("")
-		p.list.Position.Offset = p.list.Position.Length
 	}
 
-	if p.anim < 1 {
-		p.anim += conf.AnimSpeed(gtx)
-		if p.anim >= 1 {
-			p.anim = 1
-		}
-		op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
-		gtx.Constraints.Max.Y = int(p.anim * float32(gtx.Constraints.Max.Y))
-		gtx.Constraints.Max.X = int(p.anim * float32(gtx.Constraints.Max.X))
+	animPro := p.anim.Progress(gtx)
+	if animPro < 1 {
+		gtx.Constraints.Max.Y = int(animPro * float32(gtx.Constraints.Max.Y))
+		gtx.Constraints.Max.X = int(animPro * float32(gtx.Constraints.Max.X))
 	}
 	gtx.Constraints.Min = gtx.Constraints.Max
 
 	for i, sn := range p.subnets {
 		if sn.removing {
-			if sn.anim == 0 {
+			if !sn.anim.Animating(gtx) {
 				p.subnets = append(p.subnets[:i], p.subnets[i+1:]...)
 			}
 		} else {
 			if sn.delete.Clicked() {
 				sn.removing = true
+				sn.anim.Start(time.Now())
 			}
 		}
 	}
@@ -137,25 +136,14 @@ func (p *Subnetworks) Layout(th *material.Theme, gtx layout.Context, w *app.Wind
 
 func (p *Subnetworks) render(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config, index int) layout.Dimensions {
 	subnet := p.subnets[index]
-	if subnet.removing {
-		if subnet.anim > 0 {
-			subnet.anim -= conf.AnimSpeed(gtx)
-			if subnet.anim < 0 {
-				subnet.anim = 0
-			}
-			op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
-			gtx.Constraints.Max.X = int(subnet.anim * float32(gtx.Constraints.Max.X))
-		}
-	} else {
-		if subnet.anim < 1 {
-			subnet.anim += conf.AnimSpeed(gtx)
-			if subnet.anim > 1 {
-				subnet.anim = 1
-			}
+	animPro := subnet.anim.Progress(gtx)
+	if animPro < 1 {
+		if subnet.removing {
+			animPro = 1 - animPro
+		} else {
 			p.list.Position.Offset = p.list.Position.Length
-			op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
-			gtx.Constraints.Max.X = int(subnet.anim * float32(gtx.Constraints.Max.X))
 		}
+		gtx.Constraints.Max.X = int(animPro * float32(gtx.Constraints.Max.X))
 	}
 
 	d := p.card.Layout(
@@ -182,7 +170,7 @@ func (p *Subnetworks) render(th *material.Theme, gtx layout.Context, w *app.Wind
 			)
 		},
 	)
-	d.Size.Y = int(subnet.anim * float32(d.Size.Y))
+	d.Size.Y = int(animPro * float32(d.Size.Y))
 	return d
 }
 
@@ -198,9 +186,10 @@ func (p *Subnetworks) GetSubnets() []*netip.Prefix {
 }
 
 func (p *Subnetworks) InAnim() {
-	p.anim = 0
+	p.anim.Duration = p.conf.AnimTime()
+	p.anim.Start(time.Now())
 }
 
-func (p *Subnetworks) Stopped() bool {
-	return p.anim == 1
+func (p *Subnetworks) Stopped(gtx layout.Context) bool {
+	return !p.anim.Animating(gtx)
 }

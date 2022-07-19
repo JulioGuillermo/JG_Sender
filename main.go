@@ -66,6 +66,7 @@ func run(th *material.Theme, w *app.Window, conf *config.Config) error {
 		old screen.Screen
 		dlg dialog.Dialog
 	)
+	dlg.Conf = conf
 
 	conf.SetDialogOpener(dlg.SetWidget)
 	conf.SetDialogCloser(func() {
@@ -133,7 +134,7 @@ func run(th *material.Theme, w *app.Window, conf *config.Config) error {
 											new.InAnim()
 										}
 									}
-									if old == nil || new.Stopped() {
+									if old == nil || new.Stopped(gtx) {
 										return new.Layout(th, gtx, w, conf)
 									}
 									return layout.Stack{

@@ -2,22 +2,23 @@ package screen
 
 import (
 	"image"
+	"time"
 
 	"gioui.org/app"
 	"gioui.org/layout"
-	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"gioui.org/x/component"
+	"gioui.org/x/outlay"
 	"github.com/julioguillermo/jg_sender/config"
 	"github.com/julioguillermo/jg_sender/gui/components"
 )
 
 type Inbox struct {
 	conf *config.Config
-	anim float32
+	anim outlay.Animation
 
 	appbar *component.AppBar
 
@@ -40,14 +41,10 @@ func NewInboxScreen(conf *config.Config) *Inbox {
 }
 
 func (p *Inbox) Layout(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config) layout.Dimensions {
-	if p.anim < 1 {
-		p.anim += conf.AnimSpeed(gtx)
-		if p.anim > 1 {
-			p.anim = 1
-		}
-		op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
-		gtx.Constraints.Max.Y = int(p.anim * float32(gtx.Constraints.Max.Y))
-		gtx.Constraints.Max.X = int(p.anim * float32(gtx.Constraints.Max.X))
+	animPro := p.anim.Progress(gtx)
+	if animPro < 1 {
+		gtx.Constraints.Max.Y = int(animPro * float32(gtx.Constraints.Max.Y))
+		gtx.Constraints.Max.X = int(animPro * float32(gtx.Constraints.Max.X))
 	}
 	gtx.Constraints.Min = gtx.Constraints.Max
 
@@ -80,13 +77,14 @@ func (p *Inbox) Layout(th *material.Theme, gtx layout.Context, w *app.Window, co
 }
 
 func (p *Inbox) NewInbox(item components.InboxItemWidget, in bool) {
-	p.items = append(p.items, components.NewInboxItem(item, in))
+	p.items = append(p.items, components.NewInboxItem(p.conf, item, in))
 }
 
 func (p *Inbox) InAnim() {
-	p.anim = 0
+	p.anim.Duration = p.conf.AnimTime()
+	p.anim.Start(time.Now())
 }
 
-func (p *Inbox) Stopped() bool {
-	return p.anim == 1
+func (p *Inbox) Stopped(gtx layout.Context) bool {
+	return !p.anim.Animating(gtx)
 }

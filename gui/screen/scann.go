@@ -4,10 +4,10 @@ import (
 	"image"
 	"image/color"
 	"net/netip"
+	"time"
 
 	"gioui.org/app"
 	"gioui.org/layout"
-	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/text"
@@ -15,6 +15,7 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"gioui.org/x/component"
+	"gioui.org/x/outlay"
 	"github.com/julioguillermo/jg_sender/config"
 	"github.com/julioguillermo/jg_sender/connection"
 	"github.com/julioguillermo/jg_sender/gui/components"
@@ -31,7 +32,7 @@ type Scanner struct {
 	scan     widget.Clickable
 	list     widget.List
 	devices  []*found
-	anim     float32
+	anim     outlay.Animation
 	progress float64
 	win      *app.Window
 
@@ -51,10 +52,10 @@ type found struct {
 	name     string
 	addr     *netip.Addr
 	os       string
-	anim     float32
 	dim      layout.Dimensions
 	SendMSG  widget.Clickable
 	SendFile widget.Clickable
+	Anim     outlay.Animation
 }
 
 func NewScannerScreen(th *material.Theme, conf *config.Config, src SNSource, w *app.Window, newInbox func(components.InboxItemWidget, bool)) *Scanner {
@@ -62,7 +63,6 @@ func NewScannerScreen(th *material.Theme, conf *config.Config, src SNSource, w *
 		scanner:  connection.NewScanner(conf),
 		src:      src,
 		conf:     conf,
-		anim:     1,
 		progress: -1,
 		win:      w,
 		newInbox: newInbox,
@@ -127,15 +127,10 @@ func (p *Scanner) Layout(th *material.Theme, gtx layout.Context, w *app.Window, 
 		}
 	}
 
-	if p.anim < 1 {
-		p.anim += conf.AnimSpeed(gtx)
-		if p.anim >= 1 {
-			p.anim = 1
-		} else {
-			gtx.Constraints.Max.Y = int(p.anim * float32(gtx.Constraints.Max.Y))
-			gtx.Constraints.Max.X = int(p.anim * float32(gtx.Constraints.Max.X))
-		}
-		op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
+	animPro := p.anim.Progress(gtx)
+	if animPro < 1 {
+		gtx.Constraints.Max.Y = int(animPro * float32(gtx.Constraints.Max.Y))
+		gtx.Constraints.Max.X = int(animPro * float32(gtx.Constraints.Max.X))
 	}
 	gtx.Constraints.Min = gtx.Constraints.Max
 
@@ -182,13 +177,9 @@ func (p *Scanner) render(th *material.Theme, gtx layout.Context, w *app.Window, 
 		p.SendFile(device.addr, device.name)
 	}
 
-	if device.anim < 1 {
-		device.anim += conf.AnimSpeed(gtx)
-		if device.anim > 1 {
-			device.anim = 1
-		}
-		op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
-		gtx.Constraints.Max.X = int(device.anim * float32(gtx.Constraints.Max.X))
+	animPro := device.Anim.Progress(gtx)
+	if animPro < 1 {
+		gtx.Constraints.Max.X = int(animPro * float32(gtx.Constraints.Max.X))
 	}
 
 	d := p.card.Layout(
@@ -246,7 +237,7 @@ func (p *Scanner) render(th *material.Theme, gtx layout.Context, w *app.Window, 
 			)
 		},
 	)
-	d.Size.Y = int(device.anim * float32(d.Size.Y))
+	d.Size.Y = int(animPro * float32(d.Size.Y))
 	return d
 }
 
@@ -265,11 +256,12 @@ func (p *Scanner) GetOSIcon(os string) rune {
 }
 
 func (p *Scanner) InAnim() {
-	p.anim = 0
+	p.anim.Duration = p.conf.AnimTime()
+	p.anim.Start(time.Now())
 }
 
-func (p *Scanner) Stopped() bool {
-	return p.anim == 1
+func (p *Scanner) Stopped(gtx layout.Context) bool {
+	return !p.anim.Animating(gtx)
 }
 
 func (p *Scanner) OnFound(addr *netip.Addr, name, device string) {
@@ -277,7 +269,10 @@ func (p *Scanner) OnFound(addr *netip.Addr, name, device string) {
 		addr: addr,
 		os:   device,
 		name: name,
-		anim: 0,
+		Anim: outlay.Animation{
+			Duration:  p.conf.AnimTime(),
+			StartTime: time.Now(),
+		},
 	}
 	p.devices = append(p.devices, dev)
 }

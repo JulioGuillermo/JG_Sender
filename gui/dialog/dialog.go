@@ -2,6 +2,7 @@ package dialog
 
 import (
 	"image"
+	"time"
 
 	"gioui.org/app"
 	"gioui.org/layout"
@@ -10,11 +11,13 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"gioui.org/x/outlay"
 	"github.com/julioguillermo/jg_sender/config"
 )
 
 type Dialog struct {
-	anim     float32
+	Conf     *config.Config
+	anim     outlay.Animation
 	removing bool
 	cancel   widget.Clickable
 	Widget   func(*material.Theme, layout.Context, *app.Window, *config.Config) layout.Dimensions
@@ -22,7 +25,8 @@ type Dialog struct {
 
 func (p *Dialog) SetWidget(widget func(*material.Theme, layout.Context, *app.Window, *config.Config) layout.Dimensions) {
 	p.Widget = widget
-	p.anim = 0
+	p.anim.Duration = p.Conf.AnimTime()
+	p.anim.Start(time.Now())
 	p.removing = false
 }
 
@@ -35,28 +39,17 @@ func (p *Dialog) Layout(th *material.Theme, gtx layout.Context, w *app.Window, c
 		return layout.Dimensions{}
 	}
 
-	if p.removing {
-		if p.anim > 0 {
-			p.anim -= conf.AnimSpeed(gtx)
-			if p.anim <= 0 {
-				p.anim = 0
+	animPro := p.anim.Progress(gtx)
+	if animPro < 1 {
+		if p.removing {
+			animPro = 1 - animPro
+			if animPro <= 0 {
 				p.Widget = nil
 				return layout.Dimensions{}
 			}
-			op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
 		}
-		gtx.Constraints.Max.Y = int(p.anim * float32(gtx.Constraints.Max.Y))
-		gtx.Constraints.Max.X = int(p.anim * float32(gtx.Constraints.Max.X))
-	} else {
-		if p.anim < 1 {
-			p.anim += conf.AnimSpeed(gtx)
-			if p.anim > 1 {
-				p.anim = 1
-			}
-			op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
-		}
-		gtx.Constraints.Max.Y = int(p.anim * float32(gtx.Constraints.Max.Y))
-		gtx.Constraints.Max.X = int(p.anim * float32(gtx.Constraints.Max.X))
+		gtx.Constraints.Max.Y = int(animPro * float32(gtx.Constraints.Max.Y))
+		gtx.Constraints.Max.X = int(animPro * float32(gtx.Constraints.Max.X))
 	}
 
 	return layout.Stack{

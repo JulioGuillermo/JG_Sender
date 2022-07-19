@@ -10,5 +10,5 @@ import (
 type Screen interface {
 	Layout(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config) layout.Dimensions
 	InAnim()
-	Stopped() bool
+	Stopped(layout.Context) bool
 }

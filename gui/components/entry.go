@@ -2,15 +2,16 @@ package components
 
 import (
 	"image"
+	"time"
 
 	"gioui.org/app"
 	"gioui.org/layout"
-	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"gioui.org/x/outlay"
 	"github.com/julioguillermo/jg_sender/config"
 )
 
@@ -18,6 +19,7 @@ type TextInput struct {
 	Edit      widget.Editor
 	Validator func(string) bool
 	Hint      string
+	Anim      outlay.Animation
 	anim      float32
 	animTL    float32
 	Height    int
@@ -54,34 +56,43 @@ func (p *TextInput) Valid() bool {
 
 func (p *TextInput) Layout(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config) layout.Dimensions {
 	p.changed = len(p.Edit.Events()) > 0
-	if p.Validator == nil {
-		p.valid = true
-	} else {
-		if p.changed {
+	if p.changed {
+		if p.Validator == nil {
+			p.valid = true
+		} else {
 			p.valid = p.Validator(p.Edit.Text())
 		}
+		p.Anim.Duration = conf.AnimTime()
+		p.Anim.Start(time.Now())
 	}
 
-	speed := conf.AnimSpeed(gtx)
 	if p.Edit.Focused() {
 		if p.anim < 1 {
-			p.anim += speed
-			op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
+			if !p.Anim.Animating(gtx) {
+				p.Anim.Duration = conf.AnimTime()
+				p.Anim.Start(time.Now())
+			}
+			p.anim = p.Anim.Progress(gtx)
+			if p.anim > 0.9 {
+				p.anim = 1
+			}
 		}
-		if p.anim > 1 {
-			p.anim = 1
-		}
+
 		if p.animTL > 0 {
 			p.animTL = 1 - p.anim
 		}
 	} else {
 		if p.anim > 0 {
-			p.anim -= speed
-			op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
+			if !p.Anim.Animating(gtx) {
+				p.Anim.Duration = conf.AnimTime()
+				p.Anim.Start(time.Now())
+			}
+			p.anim = 1 - p.Anim.Progress(gtx)
+			if p.anim < 0.1 {
+				p.anim = 0
+			}
 		}
-		if p.anim < 0 {
-			p.anim = 0
-		}
+
 		if len(p.Edit.Text()) == 0 {
 			if p.animTL < 1 {
 				p.animTL = 1 - p.anim

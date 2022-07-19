@@ -174,8 +174,8 @@ func (p *Config) BufSize() uint64 {
 	return p.C_BufSize
 }
 
-func (p *Config) AnimTime() uint64 {
-	return p.C_AnimTime
+func (p *Config) AnimTime() time.Duration {
+	return time.Duration(p.C_AnimTime) * time.Millisecond
 }
 
 func (p *Config) SetName(n string) error {

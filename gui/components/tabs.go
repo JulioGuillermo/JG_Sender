@@ -2,15 +2,16 @@ package components
 
 import (
 	"image"
+	"time"
 
 	"gioui.org/app"
 	"gioui.org/layout"
-	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"gioui.org/x/outlay"
 	"github.com/julioguillermo/jg_sender/config"
 )
 
@@ -20,6 +21,7 @@ type Tab struct {
 	Items  []*TabItem
 	Height int
 	change bool
+	anim   outlay.Animation
 }
 
 type TabItem struct {
@@ -127,28 +129,19 @@ func (p *Tab) Layout(th *material.Theme, gtx layout.Context, w *app.Window, conf
 }
 
 func (p *TabItem) Layout(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config, screen int, parent *Tab) layout.Dimensions {
-	speed := conf.AnimSpeed(gtx)
-
 	if p.Clickable.Clicked() {
 		parent.change = true
 		parent.screen = screen
 		parent.title = p.Title
+		parent.anim.Duration = conf.AnimTime()
+		parent.anim.Start(time.Now())
 	}
 
 	if parent.screen == screen {
-		if p.anim < 1 {
-			p.anim += speed
-			op.InvalidateOp{At: gtx.Now.Add(conf.Time(gtx))}.Add(gtx.Ops)
-		}
-		if p.anim > 1 {
-			p.anim = 1
-		}
+		p.anim = parent.anim.Progress(gtx)
 	} else {
 		if p.anim > 0 {
-			p.anim -= speed
-		}
-		if p.anim < 0 {
-			p.anim = 0
+			p.anim = 1 - parent.anim.Progress(gtx)
 		}
 	}
 
