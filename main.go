@@ -73,10 +73,15 @@ func run(th *material.Theme, w *app.Window, conf *config.Config) error {
 		dlg.RemoveWidget()
 	})
 
+	notifications := []notify.Notification{}
+
 	newNotification := func(title, text string) {
 		if tabs.ScreenIndex() != 2 {
 			tabs.Notify(2, true)
-			notify.Push(title, text)
+			n, err := notify.Push(title, text)
+			if err == nil {
+				notifications = append(notifications, n)
+			}
 		}
 	}
 
@@ -126,6 +131,12 @@ func run(th *material.Theme, w *app.Window, conf *config.Config) error {
 											new = scanner_screen
 										case 2:
 											tabs.Notify(2, false)
+											if len(notifications) > 0 {
+												for _, n := range notifications {
+													n.Cancel()
+												}
+												notifications = []notify.Notification{}
+											}
 											new = inbox_screen
 										default:
 											new = config_screen
