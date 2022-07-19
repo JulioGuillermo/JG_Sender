@@ -175,6 +175,9 @@ func (p *Config) BufSize() uint64 {
 }
 
 func (p *Config) AnimTime() time.Duration {
+	if p.C_AnimTime == 0 {
+		return time.Millisecond
+	}
 	return time.Duration(p.C_AnimTime) * time.Millisecond
 }
 

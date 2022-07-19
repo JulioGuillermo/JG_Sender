@@ -44,6 +44,10 @@ func NewTab(def int, items ...*TabItem) *Tab {
 		Items:  items,
 		Height: 100,
 		change: false,
+		anim: outlay.Animation{
+			Duration:  1,
+			StartTime: time.Now(),
+		},
 	}
 }
 

@@ -32,6 +32,8 @@ func (p *Dialog) SetWidget(widget func(*material.Theme, layout.Context, *app.Win
 
 func (p *Dialog) RemoveWidget() {
 	p.removing = true
+	p.anim.Duration = p.Conf.AnimTime()
+	p.anim.Start(time.Now())
 }
 
 func (p *Dialog) Layout(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config) layout.Dimensions {
@@ -40,14 +42,14 @@ func (p *Dialog) Layout(th *material.Theme, gtx layout.Context, w *app.Window, c
 	}
 
 	animPro := p.anim.Progress(gtx)
-	if animPro < 1 {
-		if p.removing {
-			animPro = 1 - animPro
-			if animPro <= 0 {
-				p.Widget = nil
-				return layout.Dimensions{}
-			}
+	if p.removing {
+		animPro = 1 - animPro
+		if animPro <= 0 {
+			p.Widget = nil
+			return layout.Dimensions{}
 		}
+	}
+	if animPro < 1 {
 		gtx.Constraints.Max.Y = int(animPro * float32(gtx.Constraints.Max.Y))
 		gtx.Constraints.Max.X = int(animPro * float32(gtx.Constraints.Max.X))
 	}

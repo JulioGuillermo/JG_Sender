@@ -6,6 +6,7 @@ import (
 
 	"gioui.org/app"
 	"gioui.org/layout"
+	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
@@ -19,6 +20,7 @@ type TextInput struct {
 	Edit      widget.Editor
 	Validator func(string) bool
 	Hint      string
+	ctl       byte
 	Anim      outlay.Animation
 	anim      float32
 	animTL    float32
@@ -33,6 +35,7 @@ func NewTextInput(hint string, multiline bool) *TextInput {
 		Hint:      hint,
 		Height:    50,
 		Validator: nil,
+		ctl:       255,
 	}
 	input.Edit.SingleLine = !multiline
 	return input
@@ -62,36 +65,27 @@ func (p *TextInput) Layout(th *material.Theme, gtx layout.Context, w *app.Window
 		} else {
 			p.valid = p.Validator(p.Edit.Text())
 		}
-		p.Anim.Duration = conf.AnimTime()
-		p.Anim.Start(time.Now())
+		op.InvalidateOp{}.Add(gtx.Ops)
 	}
 
 	if p.Edit.Focused() {
-		if p.anim < 1 {
-			if !p.Anim.Animating(gtx) {
-				p.Anim.Duration = conf.AnimTime()
-				p.Anim.Start(time.Now())
-			}
-			p.anim = p.Anim.Progress(gtx)
-			if p.anim > 0.9 {
-				p.anim = 1
-			}
+		if p.ctl != 0 {
+			p.Anim.Duration = conf.AnimTime()
+			p.Anim.Start(time.Now())
+			p.ctl = 0
 		}
+		p.anim = p.Anim.Progress(gtx)
 
 		if p.animTL > 0 {
 			p.animTL = 1 - p.anim
 		}
 	} else {
-		if p.anim > 0 {
-			if !p.Anim.Animating(gtx) {
-				p.Anim.Duration = conf.AnimTime()
-				p.Anim.Start(time.Now())
-			}
-			p.anim = 1 - p.Anim.Progress(gtx)
-			if p.anim < 0.1 {
-				p.anim = 0
-			}
+		if p.ctl != 1 {
+			p.Anim.Duration = conf.AnimTime()
+			p.Anim.Start(time.Now())
+			p.ctl = 1
 		}
+		p.anim = 1 - p.Anim.Progress(gtx)
 
 		if len(p.Edit.Text()) == 0 {
 			if p.animTL < 1 {
