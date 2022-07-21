@@ -22,6 +22,7 @@ import (
 type Subnetworks struct {
 	conf    *config.Config
 	add     widget.Clickable
+	update  widget.Clickable
 	list    widget.List
 	subnets []*subnet
 	anim    outlay.Animation
@@ -47,15 +48,26 @@ func NewSubnetworksScreen(th *material.Theme, conf *config.Config) *Subnetworks 
 	modal := component.NewModal()
 	appbar := component.NewAppBar(modal)
 	appbar.Title = "Subnetworks"
-	appbar.SetActions([]component.AppBarAction{{
-		Layout: func(gtx layout.Context, bg, fg color.NRGBA) layout.Dimensions {
-			bls := material.ButtonLayout(th, &sn.add)
-			bls.CornerRadius = 25
-			return bls.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				return components.NewIcon(th, gtx, config.ICNewSubnet, conf.FGPrimaryColor, ScreenBarHeight)
-			})
+	appbar.SetActions([]component.AppBarAction{
+		{
+			Layout: func(gtx layout.Context, bg, fg color.NRGBA) layout.Dimensions {
+				bls := material.ButtonLayout(th, &sn.add)
+				bls.CornerRadius = 25
+				return bls.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					return components.NewIcon(th, gtx, config.ICAdd, conf.FGPrimaryColor, ScreenBarHeight)
+				})
+			},
 		},
-	}}, []component.OverflowAction{})
+		{
+			Layout: func(gtx layout.Context, bg, fg color.NRGBA) layout.Dimensions {
+				bls := material.ButtonLayout(th, &sn.update)
+				bls.CornerRadius = 25
+				return bls.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					return components.NewIcon(th, gtx, config.ICUpdate, conf.FGPrimaryColor, ScreenBarHeight)
+				})
+			},
+		},
+	}, []component.OverflowAction{})
 	sn.appbar = appbar
 
 	subnets := connection.GetIPS()
@@ -88,6 +100,12 @@ func (p *Subnetworks) New(sn string) *subnet {
 func (p *Subnetworks) Layout(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config) layout.Dimensions {
 	if p.add.Clicked() {
 		p.New("")
+	} else if p.update.Clicked() {
+		subnets := connection.GetIPS()
+		p.subnets = []*subnet{}
+		for _, s := range subnets {
+			p.New(s.String())
+		}
 	}
 
 	animPro := p.anim.Progress(gtx)
@@ -166,7 +184,7 @@ func (p *Subnetworks) render(th *material.Theme, gtx layout.Context, w *app.Wind
 				}),
 				layout.Stacked(func(gtx layout.Context) layout.Dimensions {
 					return subnet.delete.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-						return components.NewIcon(th, gtx, config.ICDelete, conf.DangerColor, 30)
+						return components.NewIcon(th, gtx, config.ICClose, conf.DangerColor, 30)
 					})
 				}),
 			)

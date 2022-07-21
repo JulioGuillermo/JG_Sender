@@ -29,17 +29,7 @@ const (
 const (
 	ICSubNetworks = '\uf0e8'
 	ICConnections = '\uf819'
-	ICInbox       = '\uf7fa'
 	ICConfig      = '\ue615'
-
-	ICNewSubnet = '\uf844'
-	ICDelete    = '\uf658'
-
-	ICScan     = '\uf43c'
-	ICScanStop = '\uf28d'
-	ICSend     = '\uf1d8'
-	ICDownload = '\uf019'
-	ICClose    = '\uf658'
 
 	ICAndroid = '\uf17b'
 	ICApple   = '\uf179'
@@ -47,20 +37,21 @@ const (
 	ICLinux   = '\uf17c'
 	ICUnknow  = '\uf29c'
 
-	ICStorages = '\uf0a0'
-	ICStorage  = '\uf0a0'
+	ICOpenFile = '\uf89b'
 	ICOpenDir  = '\uf115'
 	ICDirUp    = '\uf63c'
+
+	ICStorages = '\uf0a0'
+	ICStorage  = '\uf0a0'
 	ICDir      = '\uf114'
 	ICFile     = '\uf016'
-	ICSendFile = '\uf89b'
-	ICMSG      = '\uf430'
-	ICCMD      = '\uf489'
 
-	ICSave  = '\uf0c7'
-	ICReset = '\uf0e2'
-
-	ICBack = '\uf4a8'
+	ICAdd    = '\uf4a7'
+	ICClose  = '\uf658'
+	ICUpdate = '\uf46a'
+	ICReset  = '\uf0e2'
+	ICBack   = '\uf4a8'
+	ICSend   = '\uf1d8'
 )
 
 type Config struct {

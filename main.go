@@ -41,24 +41,25 @@ func main() {
 }
 
 func run(th *material.Theme, w *app.Window, conf *config.Config) error {
-	server := connection.InitServer(conf)
-
 	th.TextSize = unit.Sp(20)
 
-	history := screen.NewHistoryScreen(th, conf, w)
+	server := connection.InitServer(conf)
 	notifications := map[string][]notify.Notification{}
-	history.Notification = notifications
 
+	history := screen.NewHistoryScreen(th, conf, w)
 	config_screen := screen.NewConfigScreen(conf)
 	subnet_screen := screen.NewSubnetworksScreen(th, conf)
 	scanner_screen := screen.NewScannerScreen(th, conf, subnet_screen, w)
 
 	scanner_screen.OnOpen = history.Open
-	server.UpdateHistory = history.Update
+	scanner_screen.Notification = notifications
+
+	history.Notification = notifications
 	history.SendMSG = server.SendMSG
 	history.SendRes = server.SendResources
 	history.ContinueTrans = server.ContinueTrans
 
+	server.UpdateHistory = history.Update
 	server.Notify = func(UserID, title, txt string) {
 		if !history.Visibility() || history.UserID != UserID {
 			n, err := notify.Push(title, txt)
@@ -70,6 +71,7 @@ func run(th *material.Theme, w *app.Window, conf *config.Config) error {
 				}
 			}
 		}
+		w.Invalidate()
 	}
 
 	tabs := screen.NewTabScreen(conf)

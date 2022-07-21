@@ -219,6 +219,7 @@ func (p *History) Layout(th *material.Theme, gtx layout.Context) layout.Dimensio
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			return p.card.Layout(gtx, p.conf, func(gtx layout.Context) layout.Dimensions {
+				var minH int
 				return layout.Flex{
 					Axis:      layout.Horizontal,
 					Alignment: layout.End,
@@ -228,20 +229,35 @@ func (p *History) Layout(th *material.Theme, gtx layout.Context) layout.Dimensio
 						bls := material.ButtonLayout(th, &p.openFile)
 						bls.CornerRadius = 25
 						bls.Background = p.conf.BGColor
-						return bls.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						dim := bls.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 							return layout.UniformInset(10).Layout(
 								gtx,
 								func(gtx layout.Context) layout.Dimensions {
-									return components.NewIcon(th, gtx, config.ICSendFile, p.conf.BGPrimaryColor, 30)
+									return components.NewIcon(th, gtx, config.ICOpenFile, p.conf.BGPrimaryColor, 30)
 								},
 							)
 						})
+						minH = dim.Size.Y
+						return dim
 					}),
 					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 						gtx.Constraints.Max.Y = gtx.Dp(200)
-						gtx.Constraints.Min.Y = gtx.Dp(40)
 						e := material.Editor(th, &p.entry, "MSG")
-						return e.Layout(gtx)
+
+						macro := op.Record(gtx.Ops)
+						dim := e.Layout(gtx)
+						call := macro.Stop()
+
+						offset := 0
+						if dim.Size.Y < minH {
+							offset = (minH - dim.Size.Y) / 2
+							dim.Size.Y = minH
+						}
+
+						offsetTrans := op.Offset(image.Pt(0, offset)).Push(gtx.Ops)
+						call.Add(gtx.Ops)
+						offsetTrans.Pop()
+						return dim
 					}),
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						bls := material.ButtonLayout(th, &p.send)

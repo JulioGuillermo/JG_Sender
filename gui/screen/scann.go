@@ -1,6 +1,7 @@
 package screen
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"net/netip"
@@ -8,12 +9,14 @@ import (
 
 	"gioui.org/app"
 	"gioui.org/layout"
+	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/text"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"gioui.org/x/component"
+	"gioui.org/x/notify"
 	"gioui.org/x/outlay"
 	"github.com/julioguillermo/jg_sender/config"
 	"github.com/julioguillermo/jg_sender/connection"
@@ -25,6 +28,8 @@ type SNSource interface {
 }
 
 type Scanner struct {
+	Notification map[string][]notify.Notification
+
 	scanner  *connection.Scanner
 	conf     *config.Config
 	src      SNSource
@@ -88,11 +93,11 @@ func NewScannerScreen(th *material.Theme, conf *config.Config, src SNSource, w *
 							)
 						}),
 						layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-							return components.NewIcon(th, gtx, config.ICScanStop, conf.FGPrimaryColor, ScreenBarHeight-20)
+							return components.NewIcon(th, gtx, config.ICClose, conf.FGPrimaryColor, ScreenBarHeight-20)
 						}),
 					)
 				}
-				return components.NewIcon(th, gtx, config.ICScan, conf.FGPrimaryColor, ScreenBarHeight)
+				return components.NewIcon(th, gtx, config.ICUpdate, conf.FGPrimaryColor, ScreenBarHeight)
 			})
 		},
 	}}, []component.OverflowAction{})
@@ -189,7 +194,7 @@ func (p *Scanner) render(th *material.Theme, gtx layout.Context, w *app.Window, 
 					return p.layoutH.Layout(
 						gtx,
 						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							return components.NewIcon(th, gtx, p.GetOSIcon(connDev.OS), conf.BGPrimaryColor, 50)
+							return components.NewIcon(th, gtx, p.GetOSIcon(connDev.OS), conf.BGPrimaryColor, 60)
 						}),
 						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 							return p.layoutV.Layout(
@@ -198,7 +203,31 @@ func (p *Scanner) render(th *material.Theme, gtx layout.Context, w *app.Window, 
 									name := material.Label(th, title_size, connDev.Name)
 									name.Color = conf.BGPrimaryColor
 									name.Font.Weight = text.Bold
-									d := name.Layout(gtx)
+									d := p.layoutH.Layout(
+										gtx,
+										layout.Flexed(1, name.Layout),
+										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+											if p.Notification[connDev.ID] == nil || len(p.Notification[connDev.ID]) == 0 {
+												return layout.Dimensions{}
+											}
+											lab := material.Label(th, th.TextSize*0.5, fmt.Sprint(len(p.Notification[connDev.ID])))
+											lab.Color = conf.FGPrimaryColor
+
+											macro := op.Record(gtx.Ops)
+											dim := layout.UniformInset(3).Layout(gtx, lab.Layout)
+											call := macro.Stop()
+
+											r := dim.Size.X
+											if r > dim.Size.Y {
+												r = dim.Size.Y
+											}
+											rec := clip.UniformRRect(image.Rect(0, 0, dim.Size.X, dim.Size.Y), r/2)
+											paint.FillShape(gtx.Ops, conf.DangerColor, rec.Op(gtx.Ops))
+
+											call.Add(gtx.Ops)
+											return dim
+										}),
+									)
 									rec := clip.Rect{
 										Min: image.Pt(0, d.Size.Y),
 										Max: image.Pt(d.Size.X, d.Size.Y+gtx.Dp(2)),

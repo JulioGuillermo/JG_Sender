@@ -25,7 +25,7 @@ func NewIcon(th *material.Theme, gtx layout.Context, ic rune, fg color.NRGBA, s 
 		gtx,
 		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
 			return layout.Inset{
-				Top: -s / 8,
+				Top: -s / 7,
 			}.Layout(
 				gtx,
 				lab.Layout,
