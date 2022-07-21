@@ -13,6 +13,9 @@ const (
 	FILE
 
 	ERROR
+
+	CANCELED
+	OK
 )
 
 var CTL = []byte{0, 2, 0, 8, 2, 0, 0, 0}

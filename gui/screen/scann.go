@@ -11,7 +11,6 @@ import (
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/text"
-	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"gioui.org/x/component"
@@ -36,36 +35,27 @@ type Scanner struct {
 	progress float64
 	win      *app.Window
 
-	msg  *components.MSGDialog
-	file *components.FileDialog
-
-	newInbox func(components.InboxItemWidget, bool)
-
 	card   *components.Card
 	appbar *component.AppBar
 
 	layoutH layout.Flex
 	layoutV layout.Flex
+
+	OnOpen func(string)
 }
 
 type found struct {
-	name     string
-	addr     *netip.Addr
-	os       string
-	dim      layout.Dimensions
-	SendMSG  widget.Clickable
-	SendFile widget.Clickable
-	Anim     outlay.Animation
+	open widget.Clickable
+	Anim outlay.Animation
 }
 
-func NewScannerScreen(th *material.Theme, conf *config.Config, src SNSource, w *app.Window, newInbox func(components.InboxItemWidget, bool)) *Scanner {
+func NewScannerScreen(th *material.Theme, conf *config.Config, src SNSource, w *app.Window) *Scanner {
 	sn := &Scanner{
 		scanner:  connection.NewScanner(conf),
 		src:      src,
 		conf:     conf,
 		progress: -1,
 		win:      w,
-		newInbox: newInbox,
 		card:     components.NewSimpleCard(conf.BGColor, 20, 10, 10),
 	}
 
@@ -74,7 +64,9 @@ func NewScannerScreen(th *material.Theme, conf *config.Config, src SNSource, w *
 	appbar.Title = "Scanner"
 	appbar.SetActions([]component.AppBarAction{{
 		Layout: func(gtx layout.Context, bg, fg color.NRGBA) layout.Dimensions {
-			return material.Clickable(gtx, &sn.scan, func(gtx layout.Context) layout.Dimensions {
+			bls := material.ButtonLayout(th, &sn.scan)
+			bls.CornerRadius = 25
+			return bls.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				if sn.scanner.Running {
 					c := material.ProgressCircle(th, float32(sn.progress))
 					c.Color = conf.FGPrimaryColor
@@ -150,7 +142,7 @@ func (p *Scanner) Layout(th *material.Theme, gtx layout.Context, w *app.Window, 
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 			return material.List(th, &p.list).Layout(
 				gtx,
-				len(p.devices),
+				len(connection.Devices),
 				func(gtx layout.Context, index int) layout.Dimensions {
 					return p.render(th, gtx, w, conf, index)
 				},
@@ -170,11 +162,16 @@ func (p *Scanner) render(th *material.Theme, gtx layout.Context, w *app.Window, 
 		ext_space     = 20
 	)
 
+	for len(p.devices) < len(connection.Devices) {
+		p.devices = append(p.devices, &found{})
+	}
+	for len(p.devices) > len(connection.Devices) {
+		p.devices = p.devices[:len(p.devices)-1]
+	}
 	device := p.devices[index]
-	if device.SendMSG.Clicked() {
-		p.SendMSG(device.addr, device.name)
-	} else if device.SendFile.Clicked() {
-		p.SendFile(device.addr, device.name)
+	connDev := connection.Devices[index]
+	if device.open.Clicked() {
+		p.Open(connDev.ID)
 	}
 
 	animPro := device.Anim.Progress(gtx)
@@ -182,58 +179,45 @@ func (p *Scanner) render(th *material.Theme, gtx layout.Context, w *app.Window, 
 		gtx.Constraints.Max.X = int(animPro * float32(gtx.Constraints.Max.X))
 	}
 
-	d := p.card.Layout(
+	d := device.open.Layout(
 		gtx,
-		conf,
 		func(gtx layout.Context) layout.Dimensions {
-			return p.layoutH.Layout(
+			return p.card.Layout(
 				gtx,
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return components.NewIcon(th, gtx, p.GetOSIcon(device.os), conf.BGPrimaryColor, unit.Dp(float32(device.dim.Size.Y)/gtx.Metric.PxPerDp))
-				}),
-				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-					device.dim = p.layoutV.Layout(
+				conf,
+				func(gtx layout.Context) layout.Dimensions {
+					return p.layoutH.Layout(
 						gtx,
 						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							d := layout.Flex{
-								Axis: layout.Horizontal,
-							}.Layout(
+							return components.NewIcon(th, gtx, p.GetOSIcon(connDev.OS), conf.BGPrimaryColor, 50)
+						}),
+						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+							return p.layoutV.Layout(
 								gtx,
-								layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-									name := material.Label(th, title_size, device.name)
+								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+									name := material.Label(th, title_size, connDev.Name)
 									name.Color = conf.BGPrimaryColor
 									name.Font.Weight = text.Bold
-									return name.Layout(gtx)
+									d := name.Layout(gtx)
+									rec := clip.Rect{
+										Min: image.Pt(0, d.Size.Y),
+										Max: image.Pt(d.Size.X, d.Size.Y+gtx.Dp(2)),
+									}
+									paint.FillShape(gtx.Ops, conf.BGPrimaryColor, rec.Op())
+									return d
 								}),
 								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-									return device.SendMSG.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-										return components.NewIcon(th, gtx, config.ICMSG, conf.BGPrimaryColor, 30)
-									})
+									return layout.Inset{
+										Top: space_between,
+									}.Layout(
+										gtx,
+										material.Label(th, info_size, connDev.OS+" - "+connDev.Addr.String()).Layout,
+									)
 								}),
-								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-									return device.SendFile.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-										return components.NewIcon(th, gtx, config.ICFile, conf.BGPrimaryColor, 30)
-									})
-								}),
-							)
-							rec := clip.Rect{
-								Min: image.Pt(0, d.Size.Y),
-								Max: image.Pt(d.Size.X, d.Size.Y+gtx.Dp(2)),
-							}
-							paint.FillShape(gtx.Ops, conf.BGPrimaryColor, rec.Op())
-							return d
-						}),
-						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							return layout.Inset{
-								Top: space_between,
-							}.Layout(
-								gtx,
-								material.Label(th, info_size, device.os+" - "+device.addr.String()).Layout,
 							)
 						}),
 					)
-					return device.dim
-				}),
+				},
 			)
 		},
 	)
@@ -264,17 +248,8 @@ func (p *Scanner) Stopped(gtx layout.Context) bool {
 	return !p.anim.Animating(gtx)
 }
 
-func (p *Scanner) OnFound(addr *netip.Addr, name, device string) {
-	dev := &found{
-		addr: addr,
-		os:   device,
-		name: name,
-		Anim: outlay.Animation{
-			Duration:  p.conf.AnimTime(),
-			StartTime: time.Now(),
-		},
-	}
-	p.devices = append(p.devices, dev)
+func (p *Scanner) OnFound() {
+	p.win.Invalidate()
 }
 
 func (p *Scanner) OnProgress(pro float64) {
@@ -282,12 +257,8 @@ func (p *Scanner) OnProgress(pro float64) {
 	p.win.Invalidate()
 }
 
-func (p *Scanner) SendMSG(addr *netip.Addr, to string) {
-	p.msg = components.NewMSGDialog(addr, to, p.newInbox)
-	p.conf.OpenDialog(p.msg.Layout)
-}
-
-func (p *Scanner) SendFile(addr *netip.Addr, to string) {
-	p.file = components.NewFileDialog(addr, to, p.newInbox)
-	p.conf.OpenDialog(p.file.Layout)
+func (p *Scanner) Open(ID string) {
+	if p.OnOpen != nil {
+		p.OnOpen(ID)
+	}
 }

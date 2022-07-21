@@ -13,7 +13,7 @@ type Scanner struct {
 	conf     *config.Config
 	Running  bool
 	Progress func(float64)
-	Found    func(a *netip.Addr, name, device string)
+	Found    func()
 }
 
 func NewScanner(conf *config.Config) *Scanner {
@@ -71,10 +71,18 @@ func (p *Scanner) ScannAll(subnets []*netip.Prefix) {
 
 func (p *Scanner) scanAddr(a *netip.Addr, c chan bool, e chan bool) {
 	addrPort := netip.AddrPortFrom(*a, uint16(config.Port))
-	ctl, name, dtype := p.scanAddrPort(&addrPort)
+	ctl, uuid, name, dtype := p.scanAddrPort(&addrPort)
 
-	if ctl && p.Found != nil {
-		p.Found(a, name, dtype)
+	if ctl {
+		SetDevice(uuid, &Device{
+			ID:   uuid,
+			Addr: a,
+			Name: name,
+			OS:   dtype,
+		})
+		if p.Found != nil {
+			p.Found()
+		}
 	}
 
 	if e != nil {
@@ -83,42 +91,50 @@ func (p *Scanner) scanAddr(a *netip.Addr, c chan bool, e chan bool) {
 	<-c
 }
 
-func (p *Scanner) scanAddrPort(addr *netip.AddrPort) (bool, string, string) {
+func (p *Scanner) scanAddrPort(addr *netip.AddrPort) (bool, string, string, string) {
 	conn, err := net.DialTimeout("tcp", addr.String(), time.Duration(p.conf.Timeout())*time.Millisecond)
 	if err == nil {
 		defer conn.Close()
 		_, err = conn.Write([]byte{NAME})
 		if err != nil {
-			return false, "", ""
+			return false, "", "", ""
 		}
 
-		name_size := make([]byte, 8)
-		os_size := make([]byte, 8)
-		_, err = conn.Read(name_size)
+		bint := make([]byte, 8)
+		_, err = conn.Read(bint)
 		if err != nil {
-			return false, "", ""
+			return false, "", "", ""
 		}
-		_, err = conn.Read(os_size)
-		if err != nil {
-			return false, "", ""
-		}
-
-		name_buf := make([]byte, BytesToInt(name_size))
-		os_buf := make([]byte, BytesToInt(os_size))
-
-		_, e := conn.Read(name_buf)
+		uuid_buf := make([]byte, BytesToInt(bint))
+		_, e := conn.Read(uuid_buf)
 		if e != nil {
-			return false, "", ""
+			return false, "", "", ""
+		}
+		uuid := string(uuid_buf)
+
+		_, err = conn.Read(bint)
+		if err != nil {
+			return false, "", "", ""
+		}
+		name_buf := make([]byte, BytesToInt(bint))
+		_, e = conn.Read(name_buf)
+		if e != nil {
+			return false, "", "", ""
 		}
 		name := string(name_buf)
 
+		_, err = conn.Read(bint)
+		if err != nil {
+			return false, "", "", ""
+		}
+		os_buf := make([]byte, BytesToInt(bint))
 		_, e = conn.Read(os_buf)
 		if e != nil {
-			return false, name, ""
+			return false, "", "", ""
 		}
 		os := string(os_buf)
 
-		return true, name, os
+		return true, uuid, name, os
 	}
-	return false, "", ""
+	return false, "", "", ""
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/julioguillermo/jg_sender/config"
 	"github.com/julioguillermo/jg_sender/connection"
 	"github.com/julioguillermo/jg_sender/font"
-	"github.com/julioguillermo/jg_sender/gui/components"
 	"github.com/julioguillermo/jg_sender/gui/dialog"
 	"github.com/julioguillermo/jg_sender/gui/screen"
 )
@@ -46,24 +45,41 @@ func run(th *material.Theme, w *app.Window, conf *config.Config) error {
 
 	th.TextSize = unit.Sp(20)
 
+	history := screen.NewHistoryScreen(th, conf, w)
+	notifications := map[string][]notify.Notification{}
+	history.Notification = notifications
+
 	config_screen := screen.NewConfigScreen(conf)
 	subnet_screen := screen.NewSubnetworksScreen(th, conf)
-	inbox_screen := screen.NewInboxScreen(conf)
-	scanner_screen := screen.NewScannerScreen(th, conf, subnet_screen, w, inbox_screen.NewInbox)
+	scanner_screen := screen.NewScannerScreen(th, conf, subnet_screen, w)
 
-	tabs := components.NewTab(
-		0,
-		components.NewTabItem("Subnetworks", config.ICSubNetworks),
-		components.NewTabItem("Connections", config.ICConnections),
-		components.NewTabItem("Inbox", config.ICInbox),
-		components.NewTabItem("Config", config.ICConfig),
-	)
+	scanner_screen.OnOpen = history.Open
+	server.UpdateHistory = history.Update
+	history.SendMSG = server.SendMSG
+	history.SendRes = server.SendResources
+	history.ContinueTrans = server.ContinueTrans
+
+	server.Notify = func(UserID, title, txt string) {
+		if !history.Visibility() || history.UserID != UserID {
+			n, err := notify.Push(title, txt)
+			if err == nil {
+				if notifications[UserID] == nil {
+					notifications[UserID] = []notify.Notification{n}
+				} else {
+					notifications[UserID] = append(notifications[UserID], n)
+				}
+			}
+		}
+	}
+
+	tabs := screen.NewTabScreen(conf)
+	tabs.Push("Subnetworks", config.ICSubNetworks, subnet_screen)
+	tabs.Push("Scanner", config.ICConnections, scanner_screen)
+	tabs.Push("Config", config.ICConfig, config_screen)
 
 	var ops op.Ops
 
 	var (
-		new screen.Screen
-		old screen.Screen
 		dlg dialog.Dialog
 	)
 	dlg.Conf = conf
@@ -73,32 +89,6 @@ func run(th *material.Theme, w *app.Window, conf *config.Config) error {
 		dlg.RemoveWidget()
 	})
 
-	notifications := []notify.Notification{}
-
-	newNotification := func(title, text string) {
-		if tabs.ScreenIndex() != 2 {
-			tabs.Notify(2, true)
-			n, err := notify.Push(title, text)
-			if err == nil {
-				notifications = append(notifications, n)
-			}
-		}
-	}
-
-	server.OnMSG = func(addr, name, msg string) {
-		inbox_screen.NewInbox(components.NewMSG(addr, name, msg), true)
-		newNotification("MSG from "+name, msg)
-		w.Invalidate()
-	}
-	server.OnFile = func(addr, user, file string, onCancel func()) (func(uint64, uint64, uint64, uint64), func(error)) {
-		file_item := components.NewInboxFile(addr, user, file, w, onCancel)
-		inbox_screen.NewInbox(file_item, true)
-		newNotification("File from "+user, file)
-		w.Invalidate()
-		return file_item.SetProgress, file_item.SetError
-	}
-
-	bottom_size := unit.Dp(float32(tabs.Height) * 0.75)
 	for {
 		e := <-w.Events()
 		switch e := e.(type) {
@@ -108,64 +98,14 @@ func run(th *material.Theme, w *app.Window, conf *config.Config) error {
 			gtx := layout.NewContext(&ops, e)
 
 			layout.Stack{
-				Alignment: layout.S,
+				Alignment: layout.Center,
 			}.Layout(
 				gtx,
 				layout.Expanded(func(gtx layout.Context) layout.Dimensions {
-					return layout.Inset{
-						Bottom: bottom_size,
-					}.Layout(
-						gtx,
-						func(gtx layout.Context) layout.Dimensions {
-							return layout.Flex{
-								Axis: layout.Vertical,
-							}.Layout(
-								gtx,
-								layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-									if tabs.Changed() || new == nil {
-										old = new
-										switch tabs.ScreenIndex() {
-										case 0:
-											new = subnet_screen
-										case 1:
-											new = scanner_screen
-										case 2:
-											tabs.Notify(2, false)
-											if len(notifications) > 0 {
-												for _, n := range notifications {
-													n.Cancel()
-												}
-												notifications = []notify.Notification{}
-											}
-											new = inbox_screen
-										default:
-											new = config_screen
-										}
-										if old != new {
-											new.InAnim()
-										}
-									}
-									if old == nil || new.Stopped(gtx) {
-										return new.Layout(th, gtx, w, conf)
-									}
-									return layout.Stack{
-										Alignment: layout.S,
-									}.Layout(
-										gtx,
-										layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-											return old.Layout(th, gtx, w, conf)
-										}),
-										layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-											return new.Layout(th, gtx, w, conf)
-										}),
-									)
-								}),
-							)
-						},
-					)
+					return tabs.Layout(th, gtx, w)
 				}),
-				layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-					return tabs.Layout(th, gtx, w, conf)
+				layout.Expanded(func(gtx layout.Context) layout.Dimensions {
+					return history.Layout(th, gtx)
 				}),
 				layout.Expanded(func(gtx layout.Context) layout.Dimensions {
 					return dlg.Layout(th, gtx, w, conf)

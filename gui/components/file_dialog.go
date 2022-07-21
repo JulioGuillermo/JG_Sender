@@ -3,7 +3,6 @@ package components
 import (
 	"image"
 	"image/color"
-	"net/netip"
 	"path"
 
 	"gioui.org/app"
@@ -20,12 +19,10 @@ import (
 )
 
 type FileDialog struct {
-	addr *netip.Addr
-	name string
+	userid  string
+	SendRes func(string, []string)
 
 	close widget.Clickable
-
-	newInboxItem func(InboxItemWidget, bool)
 
 	err error
 
@@ -39,12 +36,11 @@ type FileDialog struct {
 	elements []*storage.Element
 }
 
-func NewFileDialog(addr *netip.Addr, name string, newInboxItem func(InboxItemWidget, bool)) *FileDialog {
+func NewFileDialog(userID string, sendRes func(userID string, resources []string)) *FileDialog {
 	diag := &FileDialog{
-		addr:         addr,
-		name:         name,
-		newInboxItem: newInboxItem,
-		dir:          "",
+		userid:  userID,
+		SendRes: sendRes,
+		dir:     "",
 	}
 	diag.dirlist.Axis = layout.Horizontal
 	diag.list.List.Axis = layout.Vertical
@@ -53,6 +49,14 @@ func NewFileDialog(addr *netip.Addr, name string, newInboxItem func(InboxItemWid
 }
 
 func (p *FileDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config) layout.Dimensions {
+	device := connection.GetDevice(p.userid)
+	addr := ""
+	name := "Unknown"
+	if device != nil {
+		name = device.Name
+		addr = device.Addr.String()
+	}
+
 	if gtx.Constraints.Max.X > gtx.Dp(400) {
 		gtx.Constraints.Max.X = gtx.Dp(400)
 	}
@@ -74,21 +78,11 @@ func (p *FileDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Windo
 					p.dir = element.Path
 					p.elements, p.err = storage.Explore(p.dir)
 				} else {
-					sender := connection.NewSender()
-					var onProgress func(uint64, uint64, uint64, uint64)
-					var onError func(error)
-					if p.newInboxItem != nil {
-						inbox_file := NewInboxFile(p.addr.String(), p.name, element.Name+"\n", w, sender.Close)
-						onProgress = inbox_file.SetProgress
-						onError = inbox_file.SetError
-						p.newInboxItem(inbox_file, false)
-					} else {
-						onProgress = func(uint64, uint64, uint64, uint64) {}
-						onError = func(error) {}
+					if p.SendRes != nil {
+						go p.SendRes(p.userid, []string{element.Path})
 					}
 					conf.CloseDialog()
 					w.Invalidate()
-					go sender.SendResources(conf, p.addr, []string{element.Path}, onError, onProgress)
 				}
 			} else if element.Selected.Value {
 				selected = true
@@ -103,21 +97,11 @@ func (p *FileDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Windo
 					n += e.Name + "\n"
 				}
 			}
-			sender := connection.NewSender()
-			var onProgress func(uint64, uint64, uint64, uint64)
-			var onError func(error)
-			if p.newInboxItem != nil {
-				inbox_file := NewInboxFile(p.addr.String(), p.name, n, w, sender.Close)
-				onProgress = inbox_file.SetProgress
-				onError = inbox_file.SetError
-				p.newInboxItem(inbox_file, false)
-			} else {
-				onProgress = func(uint64, uint64, uint64, uint64) {}
-				onError = func(error) {}
+			if p.SendRes != nil {
+				go p.SendRes(p.userid, res)
 			}
 			conf.CloseDialog()
 			w.Invalidate()
-			go sender.SendResources(conf, p.addr, res, onError, onProgress)
 		}
 	}
 
@@ -131,7 +115,7 @@ func (p *FileDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Windo
 			}.Layout(
 				gtx,
 				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-					to := material.Label(th, 20, "File to: "+p.name)
+					to := material.Label(th, th.TextSize, "File to: "+name)
 					to.Color = conf.BGPrimaryColor
 					return to.Layout(gtx)
 				}),
@@ -146,7 +130,7 @@ func (p *FileDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Windo
 			)
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			to := material.Label(th, 13, p.addr.String())
+			to := material.Label(th, th.TextSize*0.7, addr)
 			to.Color = conf.FGColor
 			return to.Layout(gtx)
 		}),
@@ -170,7 +154,7 @@ func (p *FileDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Windo
 						gtx,
 						1,
 						func(gtx layout.Context, index int) layout.Dimensions {
-							lab := material.Label(th, 13, p.dir)
+							lab := material.Label(th, th.TextSize*0.7, p.dir)
 							return lab.Layout(gtx)
 						},
 					)
@@ -188,7 +172,7 @@ func (p *FileDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Windo
 					Size: image.Pt(0, 0),
 				}
 			}
-			to := material.Label(th, 13, p.err.Error())
+			to := material.Label(th, th.TextSize*0.7, p.err.Error())
 			to.Color = conf.DangerColor
 			return to.Layout(gtx)
 		}),
@@ -228,7 +212,7 @@ func (p *FileDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Windo
 								return NewIcon(th, gtx, config.ICSend, col, 40)
 							}),
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								lab := material.Label(th, 20, "Send")
+								lab := material.Label(th, th.TextSize, "Send")
 								lab.Color = col
 								return lab.Layout(gtx)
 							}),

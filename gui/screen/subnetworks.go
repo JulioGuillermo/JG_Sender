@@ -49,7 +49,9 @@ func NewSubnetworksScreen(th *material.Theme, conf *config.Config) *Subnetworks 
 	appbar.Title = "Subnetworks"
 	appbar.SetActions([]component.AppBarAction{{
 		Layout: func(gtx layout.Context, bg, fg color.NRGBA) layout.Dimensions {
-			return material.Clickable(gtx, &sn.add, func(gtx layout.Context) layout.Dimensions {
+			bls := material.ButtonLayout(th, &sn.add)
+			bls.CornerRadius = 25
+			return bls.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return components.NewIcon(th, gtx, config.ICNewSubnet, conf.FGPrimaryColor, ScreenBarHeight)
 			})
 		},

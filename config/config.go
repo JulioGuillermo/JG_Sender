@@ -53,11 +53,14 @@ const (
 	ICDirUp    = '\uf63c'
 	ICDir      = '\uf114'
 	ICFile     = '\uf016'
+	ICSendFile = '\uf89b'
 	ICMSG      = '\uf430'
 	ICCMD      = '\uf489'
 
 	ICSave  = '\uf0c7'
 	ICReset = '\uf0e2'
+
+	ICBack = '\uf4a8'
 )
 
 type Config struct {
