@@ -78,6 +78,14 @@ func (p *Server) GetMSG(connection net.Conn) {
 		return
 	}
 
+	trans := &Transfer{
+		ID:       transID,
+		UserID:   userID,
+		DateTime: time.Now(),
+		In:       true,
+	}
+	SetTrans(transID, trans)
+
 	bint := make([]byte, 8)
 	// MSG
 	_, e = connection.Read(bint)
@@ -85,13 +93,7 @@ func (p *Server) GetMSG(connection net.Conn) {
 		bmsg := make([]byte, BytesToInt(bint))
 		_, e = connection.Read(bmsg)
 		if e == nil {
-			SetTrans(transID, &Transfer{
-				ID:       transID,
-				UserID:   userID,
-				DateTime: time.Now(),
-				In:       true,
-				MSG:      string(bmsg),
-			})
+			trans.MSG = string(bmsg)
 			if p.Notify != nil {
 				p.Notify(userID, "MSG from: "+userName, string(bmsg))
 			}
@@ -101,13 +103,7 @@ func (p *Server) GetMSG(connection net.Conn) {
 			return
 		}
 	}
-	SetTrans(transID, &Transfer{
-		ID:       transID,
-		UserID:   userID,
-		DateTime: time.Now(),
-		In:       true,
-		Error:    e,
-	})
+	trans.Error = e
 
 	if p.Notify != nil {
 		p.Notify(userID, "MSG from: "+userName, e.Error())
