@@ -31,10 +31,11 @@ type Transfer struct {
 }
 
 type Device struct {
-	ID   string
-	Addr *netip.Addr
-	Name string
-	OS   string
+	ID     string
+	Addr   *netip.Addr
+	Name   string
+	OS     string
+	Online bool
 }
 
 var History = []*Transfer{}
@@ -97,9 +98,15 @@ func GetDevice(id string) *Device {
 
 func SetDevice(id string, d *Device) {
 	index := FindDevice(id)
-	if index == -1 {
-		Devices = append(Devices, d)
-		return
+	if index != -1 {
+		Devices = append(Devices[:index], Devices[index+1:]...)
 	}
-	Devices[index] = d
+	d.Online = true
+	Devices = append([]*Device{d}, Devices...)
+}
+
+func InvalidateDevices() {
+	for _, d := range Devices {
+		d.Online = false
+	}
 }

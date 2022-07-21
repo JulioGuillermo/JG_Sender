@@ -52,6 +52,9 @@ const (
 	ICReset  = '\uf0e2'
 	ICBack   = '\uf4a8'
 	ICSend   = '\uf1d8'
+
+	ICOnline  = '\uf836'
+	ICOffline = '\uf837'
 )
 
 type Config struct {

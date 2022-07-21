@@ -119,7 +119,7 @@ func (p *Scanner) Layout(th *material.Theme, gtx layout.Context, w *app.Window, 
 		if p.scanner.Running {
 			p.scanner.Stop()
 		} else {
-			p.devices = []*found{}
+			connection.InvalidateDevices()
 			go p.scanner.ScannAll(p.src.GetSubnets())
 		}
 	}
@@ -240,7 +240,21 @@ func (p *Scanner) render(th *material.Theme, gtx layout.Context, w *app.Window, 
 										Top: space_between,
 									}.Layout(
 										gtx,
-										material.Label(th, info_size, connDev.OS+" - "+connDev.Addr.String()).Layout,
+										func(gtx layout.Context) layout.Dimensions {
+											return p.layoutH.Layout(
+												gtx,
+												layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+													ic := config.ICOffline
+													if connDev.Online {
+														ic = config.ICOnline
+													}
+													return components.NewIcon(th, gtx, ic, conf.FGColor, 25)
+												}),
+												layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+													return material.Label(th, info_size, connDev.OS+" - "+connDev.Addr.String()).Layout(gtx)
+												}),
+											)
+										},
 									)
 								}),
 							)
