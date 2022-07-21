@@ -403,7 +403,7 @@ func (p *History) renderFile(th *material.Theme, gtx layout.Context, element *co
 					}
 					size := unit.Dp(40)
 					bls := material.ButtonLayout(th, clickable)
-					bls.Background = p.conf.BGColor
+					bls.Background = color.NRGBA{A: 0}
 					bls.CornerRadius = size / 2
 					return bls.Layout(
 						gtx,
