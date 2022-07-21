@@ -81,10 +81,20 @@ func (p *Server) ContinueTrans(userID string, trans *Transfer) {
 }
 
 func (p *Server) UserView(connection net.Conn) {
-	UserID, _, _, _, e := p.GetUser(connection)
+	bint := make([]byte, 8)
+
+	// User ID
+	_, e := connection.Read(bint)
 	if e != nil {
 		return
 	}
+	buserID := make([]byte, BytesToInt(bint))
+	_, e = connection.Read(buserID)
+	if e != nil {
+		return
+	}
+	UserID := string(buserID)
+
 	UserView(UserID)
 }
 
@@ -105,5 +115,13 @@ func (p *Server) SendUserView(userID string) {
 		return
 	}
 
-	p.SendUser(connection, "")
+	// User ID
+	_, e = connection.Write(IntToBytes(uint64(len(userID))))
+	if e != nil {
+		return
+	}
+	_, e = connection.Write([]byte(userID))
+	if e != nil {
+		return
+	}
 }
