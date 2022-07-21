@@ -462,7 +462,7 @@ func (p *History) renderMSG(th *material.Theme, gtx layout.Context, element *con
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					/*date := material.Label(th, th.TextSize*0.7, FormatTime(element.DateTime))
 					return date.Layout(gtx)*/
-					if element.View && !element.In {
+					if element.View && !element.In && element.Error == nil {
 						return components.NewIcon(th, gtx, config.ICOK, p.conf.FGColor, 20)
 					}
 					return layout.Dimensions{}
