@@ -30,6 +30,13 @@ func (p *Scanner) Stop() {
 }
 
 func (p *Scanner) ScannAll(subnets []*netip.Prefix) {
+	if len(subnets) == 0 {
+		p.Running = false
+		if p.Progress != nil {
+			p.Progress(-1)
+		}
+		return
+	}
 	p.Running = true
 	maxAddr := 0.0
 	addrPro := 0.0
