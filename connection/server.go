@@ -96,6 +96,9 @@ func (p *Server) UserView(connection net.Conn) {
 	UserID := string(buserID)
 
 	UserView(UserID)
+	if p.UpdateHistory != nil {
+		p.UpdateHistory(UserID)
+	}
 }
 
 func (p *Server) SendUserView(userID string) {
