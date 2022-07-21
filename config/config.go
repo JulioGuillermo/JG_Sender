@@ -47,11 +47,12 @@ const (
 	ICFile     = '\uf016'
 
 	ICAdd    = '\uf4a7'
-	ICClose  = '\uf658'
+	ICClose  = '\uf467'
 	ICUpdate = '\uf46a'
 	ICReset  = '\uf0e2'
 	ICBack   = '\uf4a8'
 	ICSend   = '\uf1d8'
+	ICOK     = '\uf62b'
 
 	ICOnline  = '\uf836'
 	ICOffline = '\uf837'

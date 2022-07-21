@@ -10,6 +10,7 @@ import (
 )
 
 func NewIcon(th *material.Theme, gtx layout.Context, ic rune, fg color.NRGBA, s unit.Dp) layout.Dimensions {
+	margin := s / 7
 	c := gtx.Dp(s)
 	gtx.Constraints.Max.X = c
 	gtx.Constraints.Max.Y = c
@@ -25,7 +26,7 @@ func NewIcon(th *material.Theme, gtx layout.Context, ic rune, fg color.NRGBA, s 
 		gtx,
 		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
 			return layout.Inset{
-				Top: -s / 7,
+				Top: -margin,
 			}.Layout(
 				gtx,
 				lab.Layout,

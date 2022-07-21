@@ -13,6 +13,7 @@ import (
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/text"
+	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"gioui.org/x/component"
@@ -51,6 +52,7 @@ type History struct {
 
 	SendMSG       func(string, string)
 	SendRes       func(string, []string)
+	SendView      func(string)
 	ContinueTrans func(string, *connection.Transfer)
 }
 
@@ -110,6 +112,13 @@ func (p *History) Update(UserID string) {
 }
 
 func (p *History) Open(id string) {
+	if p.SendView != nil {
+		p.SendView(id)
+	}
+	dev := connection.GetDevice(id)
+	if dev != nil {
+		dev.Not = 0
+	}
 	p.closing = false
 	p.visible = true
 	p.anim.Duration = p.conf.AnimTime()
@@ -241,7 +250,9 @@ func (p *History) Layout(th *material.Theme, gtx layout.Context) layout.Dimensio
 						return dim
 					}),
 					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-						gtx.Constraints.Max.Y = gtx.Dp(200)
+						if gtx.Constraints.Max.Y > gtx.Dp(200) {
+							gtx.Constraints.Max.Y = gtx.Dp(200)
+						}
 						e := material.Editor(th, &p.entry, "MSG")
 
 						macro := op.Record(gtx.Ops)
@@ -301,7 +312,7 @@ func FormatTime(t time.Time) string {
 
 func (p *History) renderFile(th *material.Theme, gtx layout.Context, element *connection.Transfer, clickable *widget.Clickable, onCancel func()) layout.Dimensions {
 	device := connection.GetDevice(element.UserID)
-	canContinue := device != nil && p.ContinueTrans != nil && !element.In
+	canContinue := device != nil && p.ContinueTrans != nil
 	if clickable.Clicked() {
 		if element.Error == nil && !element.File.Canceled {
 			element.File.Canceled = true
@@ -333,56 +344,78 @@ func (p *History) renderFile(th *material.Theme, gtx layout.Context, element *co
 			)*/
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			gtx.Constraints.Min.Y = gtx.Dp(30)
 			return layout.Flex{
 				Axis:      layout.Horizontal,
-				Alignment: layout.Middle,
+				Alignment: layout.End,
 			}.Layout(
 				gtx,
+				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+					d := layout.Flex{
+						Axis: layout.Vertical,
+					}.Layout(
+						gtx,
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							return layout.Flex{
+								Axis:      layout.Horizontal,
+								Alignment: layout.End,
+							}.Layout(
+								gtx,
+								layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+									if element.Error != nil {
+										errLab := material.Label(th, th.TextSize, element.Error.Error())
+										errLab.Color = p.conf.DangerColor
+										return errLab.Layout(gtx)
+									}
+									if element.File.Canceled {
+										errLab := material.Label(th, th.TextSize, "Canceled")
+										errLab.Color = p.conf.DangerColor
+										return errLab.Layout(gtx)
+									}
+									var txt string
+									if element.File.TransBytes == element.File.TotalBytes {
+										txt = "Completed"
+									} else {
+										txt = fmt.Sprintf("[%d / %d] %.0f %%", element.File.Index, len(element.File.Files), progress*100)
+									}
+									lab := material.Label(th, th.TextSize, txt)
+									lab.Color = p.conf.BGPrimaryColor
+									return lab.Layout(gtx)
+								}),
+								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+									lab := material.Label(th, th.TextSize, fmt.Sprintf("%s / %s", formatSize(float64(element.File.TransBytes)), formatSize(float64(element.File.TotalBytes))))
+									lab.Color = p.conf.BGPrimaryColor
+									return lab.Layout(gtx)
+								}),
+							)
+						}),
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							bar := material.ProgressBar(th, progress)
+							bar.Color = p.conf.BGPrimaryColor
+							bar.TrackColor = p.conf.Shadow
+							return bar.Layout(gtx)
+						}),
+					)
+					return d
+				}),
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					if element.File.TransBytes == element.File.TotalBytes || ((element.Error != nil || element.File.Canceled) && !canContinue) {
 						return layout.Dimensions{}
 					}
-					return clickable.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-						if element.Error != nil || element.File.Canceled {
-							return components.NewIcon(th, gtx, config.ICReset, p.conf.DangerColor, 30)
-						}
-						return components.NewIcon(th, gtx, config.ICClose, p.conf.DangerColor, 30)
-					})
-				}),
-				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-					if element.Error != nil {
-						errLab := material.Label(th, th.TextSize, element.Error.Error())
-						errLab.Color = p.conf.DangerColor
-						return errLab.Layout(gtx)
-					}
-					if element.File.Canceled {
-						errLab := material.Label(th, th.TextSize, "Canceled")
-						errLab.Color = p.conf.DangerColor
-						return errLab.Layout(gtx)
-					}
-					var txt string
-					if element.File.TransBytes == element.File.TotalBytes {
-						txt = "Completed"
-					} else {
-						txt = fmt.Sprintf("[%d / %d] %.0f %%", element.File.Index, len(element.File.Files), progress*100)
-					}
-					lab := material.Label(th, th.TextSize, txt)
-					lab.Color = p.conf.BGPrimaryColor
-					return lab.Layout(gtx)
-				}),
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					lab := material.Label(th, th.TextSize, fmt.Sprintf("%s / %s", formatSize(float64(element.File.TransBytes)), formatSize(float64(element.File.TotalBytes))))
-					lab.Color = p.conf.BGPrimaryColor
-					return lab.Layout(gtx)
+					size := unit.Dp(40)
+					bls := material.ButtonLayout(th, clickable)
+					bls.Background = p.conf.BGColor
+					bls.CornerRadius = size / 2
+					return bls.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							if element.Error != nil || element.File.Canceled {
+								return components.NewIcon(th, gtx, config.ICReset, p.conf.BGPrimaryColor, size)
+							}
+							return components.NewIcon(th, gtx, config.ICClose, p.conf.BGPrimaryColor, size)
+						},
+					)
 				}),
 			)
-		}),
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			bar := material.ProgressBar(th, progress)
-			bar.Color = p.conf.BGPrimaryColor
-			bar.TrackColor = p.conf.Shadow
-			return bar.Layout(gtx)
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			return layout.Flex{
@@ -391,8 +424,12 @@ func (p *History) renderFile(th *material.Theme, gtx layout.Context, element *co
 			}.Layout(
 				gtx,
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					title := material.Label(th, th.TextSize*0.7, FormatTime(element.DateTime))
-					return title.Layout(gtx)
+					/*title := material.Label(th, th.TextSize*0.7, FormatTime(element.DateTime))
+					return title.Layout(gtx)*/
+					if element.View && !element.In {
+						return components.NewIcon(th, gtx, config.ICOK, p.conf.FGColor, 20)
+					}
+					return layout.Dimensions{}
 				}),
 			)
 		}),
@@ -405,6 +442,10 @@ func (p *History) renderMSG(th *material.Theme, gtx layout.Context, element *con
 	}.Layout(
 		gtx,
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			msg := material.Label(th, th.TextSize, element.MSG)
+			return msg.Layout(gtx)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			if element.Error == nil {
 				return layout.Dimensions{}
 			}
@@ -413,18 +454,18 @@ func (p *History) renderMSG(th *material.Theme, gtx layout.Context, element *con
 			return err.Layout(gtx)
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			msg := material.Label(th, th.TextSize, element.MSG)
-			return msg.Layout(gtx)
-		}),
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			return layout.Flex{
 				Axis:    layout.Horizontal,
 				Spacing: layout.SpaceStart,
 			}.Layout(
 				gtx,
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					date := material.Label(th, th.TextSize*0.7, FormatTime(element.DateTime))
-					return date.Layout(gtx)
+					/*date := material.Label(th, th.TextSize*0.7, FormatTime(element.DateTime))
+					return date.Layout(gtx)*/
+					if element.View && !element.In {
+						return components.NewIcon(th, gtx, config.ICOK, p.conf.FGColor, 20)
+					}
+					return layout.Dimensions{}
 				}),
 			)
 		}),

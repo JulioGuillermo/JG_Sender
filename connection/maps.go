@@ -25,6 +25,7 @@ type Transfer struct {
 	UserID   string
 	DateTime time.Time
 	In       bool
+	View     bool
 	MSG      string
 	Error    error
 	File     *FileTransfer
@@ -35,6 +36,7 @@ type Device struct {
 	Addr   *netip.Addr
 	Name   string
 	OS     string
+	Not    uint64
 	Online bool
 }
 
@@ -50,6 +52,14 @@ func GetUserHistory(userid string) []*Transfer {
 		}
 	}
 	return his
+}
+
+func UserView(userid string) {
+	for _, t := range History {
+		if t.UserID == userid {
+			t.View = true
+		}
+	}
 }
 
 func FindTrans(id string) int {
@@ -99,6 +109,7 @@ func GetDevice(id string) *Device {
 func SetDevice(id string, d *Device) {
 	index := FindDevice(id)
 	if index != -1 {
+		d.Not = Devices[index].Not
 		Devices = append(Devices[:index], Devices[index+1:]...)
 	}
 	d.Online = true

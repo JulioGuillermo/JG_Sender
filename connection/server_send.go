@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"errors"
 	"io/fs"
 	"net"
 	"net/netip"
@@ -70,6 +71,10 @@ func (p *Server) SendMSG(userID string, msg string) {
 		In:       false,
 		MSG:      msg,
 	}
+	if device == nil {
+		trans.Error = errors.New("user not found")
+		return
+	}
 	SetTrans(transID, trans)
 	if p.UpdateHistory != nil {
 		p.UpdateHistory(userID)
@@ -107,99 +112,16 @@ func (p *Server) SendMSG(userID string, msg string) {
 	}
 }
 
-func (p *Server) SendResources(userID string, resources []string) {
-	// Getting total size and files
-	tsize := uint64(0)
-	files := []*Element{}
-	var (
-		inf        fs.FileInfo
-		element    *Element
-		subelement *Element
-		res        []fs.DirEntry
-		e          error
-	)
-	for _, r := range resources { // Read all resources
-		inf, e = os.Stat(r)
-		if e == nil {
-			if inf.IsDir() { // if resource is a dir
-				element = &Element{
-					Path: r,
-					Name: path.Base(r),
-				}
-				fifo := []*Element{element}
-				for len(fifo) > 0 {
-					element = fifo[0]
-					fifo = fifo[1:]
-					res, e = os.ReadDir(element.Path) // explore dir
-					if e == nil {
-						for _, r := range res { // get all element on dir
-							subelement = &Element{
-								Path: path.Join(element.Path, r.Name()),
-								Name: path.Join(element.Name, r.Name()),
-							}
-							if r.IsDir() { // if element is a subdir
-								fifo = append(fifo, subelement) // explore too
-							} else {
-								inf, e = os.Stat(subelement.Path) // if is a file
-								if e == nil {
-									subelement.Size = uint64(inf.Size())
-									files = append(files, subelement) // add it and it's size
-									tsize += subelement.Size
-								}
-							}
-						}
-					}
-				}
-			} else { // if resource is a file
-				element = &Element{
-					Path: r,
-					Name: path.Base(r),
-					Size: uint64(inf.Size()),
-				}
-				files = append(files, element) // Add to files
-				tsize += element.Size          // add it's size
-			}
-		}
-	}
-
-	transID := uuid.NewString()
-
-	trans := &Transfer{
-		ID:       transID,
-		UserID:   userID,
-		DateTime: time.Now(),
-		In:       false,
-		File: &FileTransfer{
-			Files:      files,
-			TotalBytes: tsize,
-		},
-	}
-	SetTrans(transID, trans)
-	if p.UpdateHistory != nil {
-		p.UpdateHistory(userID)
-		defer p.UpdateHistory(userID)
-	}
-
-	p.SendTrans(userID, trans)
-}
-
-func (p *Server) ContinueTrans(userID string, trans *Transfer) {
-	trans.Error = nil
-	trans.File.Canceled = false
-	p.UpdateHistory(userID)
-	if trans.In {
-
-	} else {
-		p.SendTrans(userID, trans)
-	}
-}
-
 func (p *Server) SendTrans(userID string, trans *Transfer) {
 	if p.UpdateHistory != nil {
 		defer p.UpdateHistory(userID)
 	}
 
 	device := GetDevice(userID)
+	if device == nil {
+		trans.Error = errors.New("user not found")
+		return
+	}
 
 	// Connecting
 	addrPort := netip.AddrPortFrom(*device.Addr, uint16(config.Port))
@@ -341,4 +263,97 @@ func (p *Server) SendTrans(userID string, trans *Transfer) {
 		}
 		trans.File.Index++
 	}
+}
+
+func (p *Server) SendResources(userID string, resources []string) {
+	// Getting total size and files
+	tsize := uint64(0)
+	files := []*Element{}
+	var (
+		inf        fs.FileInfo
+		element    *Element
+		subelement *Element
+		res        []fs.DirEntry
+		e          error
+	)
+	for _, r := range resources { // Read all resources
+		inf, e = os.Stat(r)
+		if e == nil {
+			if inf.IsDir() { // if resource is a dir
+				element = &Element{
+					Path: r,
+					Name: path.Base(r),
+				}
+				fifo := []*Element{element}
+				for len(fifo) > 0 {
+					element = fifo[0]
+					fifo = fifo[1:]
+					res, e = os.ReadDir(element.Path) // explore dir
+					if e == nil {
+						for _, r := range res { // get all element on dir
+							subelement = &Element{
+								Path: path.Join(element.Path, r.Name()),
+								Name: path.Join(element.Name, r.Name()),
+							}
+							if r.IsDir() { // if element is a subdir
+								fifo = append(fifo, subelement) // explore too
+							} else {
+								inf, e = os.Stat(subelement.Path) // if is a file
+								if e == nil {
+									subelement.Size = uint64(inf.Size())
+									files = append(files, subelement) // add it and it's size
+									tsize += subelement.Size
+								}
+							}
+						}
+					}
+				}
+			} else { // if resource is a file
+				element = &Element{
+					Path: r,
+					Name: path.Base(r),
+					Size: uint64(inf.Size()),
+				}
+				files = append(files, element) // Add to files
+				tsize += element.Size          // add it's size
+			}
+		}
+	}
+
+	transID := uuid.NewString()
+
+	trans := &Transfer{
+		ID:       transID,
+		UserID:   userID,
+		DateTime: time.Now(),
+		In:       false,
+		File: &FileTransfer{
+			Files:      files,
+			TotalBytes: tsize,
+		},
+	}
+	SetTrans(transID, trans)
+	if p.UpdateHistory != nil {
+		p.UpdateHistory(userID)
+		defer p.UpdateHistory(userID)
+	}
+
+	p.SendTrans(userID, trans)
+}
+
+func (p *Server) ContinueSendingTrans(connection net.Conn) {
+	UserID, _, _, TransID, e := p.GetUser(connection)
+	if e != nil {
+		return
+	}
+
+	trans := GetTrans(TransID)
+	if trans == nil {
+		connection.Write([]byte{ERROR})
+		return
+	}
+	connection.Write([]byte{OK})
+
+	trans.File.Canceled = false
+	p.SendTrans(UserID, trans)
 }

@@ -4,18 +4,15 @@ const (
 	NAME = byte(iota)
 	MSG
 	RESOURCES
-
-	EXPLORE
-	GET
-	EXEC_CMD
+	CONT_TRANS
+	USER_VIEW
 
 	DIR
 	FILE
 
-	ERROR
-
-	CANCELED
 	OK
+	ERROR
+	CANCELED
 )
 
 var CTL = []byte{0, 2, 0, 8, 2, 0, 0, 0}

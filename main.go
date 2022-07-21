@@ -17,6 +17,7 @@ import (
 	"github.com/julioguillermo/jg_sender/font"
 	"github.com/julioguillermo/jg_sender/gui/dialog"
 	"github.com/julioguillermo/jg_sender/gui/screen"
+	"github.com/julioguillermo/jg_sender/notification"
 )
 
 func main() {
@@ -57,17 +58,28 @@ func run(th *material.Theme, w *app.Window, conf *config.Config) error {
 	history.Notification = notifications
 	history.SendMSG = server.SendMSG
 	history.SendRes = server.SendResources
+	history.SendView = server.SendUserView
 	history.ContinueTrans = server.ContinueTrans
 
 	server.UpdateHistory = history.Update
+
+	notifier := notification.InitNotifier()
 	server.Notify = func(UserID, title, txt string) {
-		if !history.Visibility() || history.UserID != UserID {
-			n, err := notify.Push(title, txt)
-			if err == nil {
-				if notifications[UserID] == nil {
-					notifications[UserID] = []notify.Notification{n}
-				} else {
-					notifications[UserID] = append(notifications[UserID], n)
+		if history.Visibility() && history.UserID == UserID {
+			server.SendUserView(UserID)
+		} else {
+			dev := connection.GetDevice(UserID)
+			if dev != nil {
+				dev.Not++
+			}
+			if notifier != nil {
+				n, err := notifier.CreateNotification(title, txt)
+				if err == nil {
+					if notifications[UserID] == nil {
+						notifications[UserID] = []notify.Notification{n}
+					} else {
+						notifications[UserID] = append(notifications[UserID], n)
+					}
 				}
 			}
 		}

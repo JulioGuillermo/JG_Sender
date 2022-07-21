@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/netip"
@@ -8,6 +9,8 @@ import (
 	"path"
 	"strings"
 	"time"
+
+	"github.com/julioguillermo/jg_sender/config"
 )
 
 func (p *Server) GetUser(connection net.Conn) (userID, userName, userOS, transID string, e error) {
@@ -68,7 +71,7 @@ func (p *Server) GetUser(connection net.Conn) (userID, userName, userOS, transID
 	if e != nil {
 		return
 	}
-	transID = "R" + string(bTransID)
+	transID = string(bTransID)
 	return
 }
 
@@ -77,6 +80,7 @@ func (p *Server) GetMSG(connection net.Conn) {
 	if e != nil {
 		return
 	}
+	transID = "R" + transID
 
 	trans := &Transfer{
 		ID:       transID,
@@ -136,6 +140,7 @@ func (p *Server) GetResources(connection net.Conn) {
 	if err != nil {
 		return
 	}
+	transID = "R" + transID
 
 	bint := make([]byte, 8)
 	// Get bufSize
@@ -313,5 +318,44 @@ func (p *Server) GetResources(connection net.Conn) {
 		}
 		f.Close()
 		os.Rename(tmp, CheckName(file.Path))
+	}
+}
+
+func (p *Server) ContinueRecivingTrans(userID string, trans *Transfer) {
+	if p.UpdateHistory != nil {
+		defer p.UpdateHistory(userID)
+	}
+	dev := GetDevice(userID)
+	if dev == nil {
+		trans.Error = errors.New("user not found")
+		return
+	}
+
+	// Connecting
+	addrPort := netip.AddrPortFrom(*dev.Addr, uint16(config.Port))
+	connection, e := net.Dial("tcp", addrPort.String())
+	if e != nil {
+		trans.Error = e
+		return
+	}
+	defer connection.Close()
+
+	// CTL MSG: RESOURCES
+	_, e = connection.Write([]byte{CONT_TRANS})
+	if e != nil {
+		trans.Error = e
+		return
+	}
+	// Send user info and trans id
+	e = p.SendUser(connection, trans.ID[1:])
+	if e != nil {
+		trans.Error = e
+		return
+	}
+
+	ctl := make([]byte, 1)
+	connection.Read(ctl)
+	if ctl[0] == ERROR {
+		trans.Error = errors.New("can not continue")
 	}
 }

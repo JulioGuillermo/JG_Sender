@@ -183,9 +183,15 @@ func (p *Subnetworks) render(th *material.Theme, gtx layout.Context, w *app.Wind
 					)
 				}),
 				layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-					return subnet.delete.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-						return components.NewIcon(th, gtx, config.ICClose, conf.DangerColor, 30)
-					})
+					bls := material.ButtonLayout(th, &subnet.delete)
+					bls.CornerRadius = 15
+					bls.Background = p.conf.BGColor
+					return bls.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return components.NewIcon(th, gtx, config.ICClose, conf.DangerColor, 30)
+						},
+					)
 				}),
 			)
 		},

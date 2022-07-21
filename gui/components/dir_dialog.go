@@ -89,7 +89,10 @@ func (p *DirDialog) Layout(th *material.Theme, gtx layout.Context, w *app.Window
 					return to.Layout(gtx)
 				}),
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return p.close.Layout(
+					bls := material.ButtonLayout(th, &p.close)
+					bls.Background = conf.BGColor
+					bls.CornerRadius = 15
+					return bls.Layout(
 						gtx,
 						func(gtx layout.Context) layout.Dimensions {
 							return NewIcon(th, gtx, config.ICClose, conf.DangerColor, 30)

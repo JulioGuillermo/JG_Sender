@@ -207,10 +207,10 @@ func (p *Scanner) render(th *material.Theme, gtx layout.Context, w *app.Window, 
 										gtx,
 										layout.Flexed(1, name.Layout),
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-											if p.Notification[connDev.ID] == nil || len(p.Notification[connDev.ID]) == 0 {
+											if connDev.Not == 0 {
 												return layout.Dimensions{}
 											}
-											lab := material.Label(th, th.TextSize*0.5, fmt.Sprint(len(p.Notification[connDev.ID])))
+											lab := material.Label(th, th.TextSize*0.5, fmt.Sprint(connDev.Not))
 											lab.Color = conf.FGPrimaryColor
 
 											macro := op.Record(gtx.Ops)

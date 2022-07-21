@@ -3,6 +3,7 @@ package connection
 import (
 	"fmt"
 	"net"
+	"net/netip"
 
 	"github.com/julioguillermo/jg_sender/config"
 )
@@ -61,5 +62,48 @@ func (p *Server) ProcessClient(connection net.Conn) {
 		p.GetMSG(connection)
 	case RESOURCES:
 		p.GetResources(connection)
+	case CONT_TRANS:
+		p.ContinueSendingTrans(connection)
+	case USER_VIEW:
+		p.UserView(connection)
 	}
+}
+
+func (p *Server) ContinueTrans(userID string, trans *Transfer) {
+	trans.Error = nil
+	trans.File.Canceled = false
+	p.UpdateHistory(userID)
+	if trans.In {
+		p.ContinueRecivingTrans(userID, trans)
+	} else {
+		p.SendTrans(userID, trans)
+	}
+}
+
+func (p *Server) UserView(connection net.Conn) {
+	UserID, _, _, _, e := p.GetUser(connection)
+	if e != nil {
+		return
+	}
+	UserView(UserID)
+}
+
+func (p *Server) SendUserView(userID string) {
+	dev := GetDevice(userID)
+	if dev == nil {
+		return
+	}
+
+	addrPort := netip.AddrPortFrom(*dev.Addr, uint16(config.Port))
+	connection, e := net.Dial("tcp", addrPort.String())
+	if e != nil {
+		return
+	}
+
+	_, e = connection.Write([]byte{USER_VIEW})
+	if e != nil {
+		return
+	}
+
+	p.SendUser(connection, "")
 }
