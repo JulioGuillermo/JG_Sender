@@ -119,11 +119,11 @@ func (p *Server) SendUserView(userID string) {
 	}
 
 	// User ID
-	_, e = connection.Write(IntToBytes(uint64(len(userID))))
+	_, e = connection.Write(IntToBytes(uint64(len(p.conf.UUID))))
 	if e != nil {
 		return
 	}
-	_, e = connection.Write([]byte(userID))
+	_, e = connection.Write([]byte(p.conf.UUID))
 	if e != nil {
 		return
 	}

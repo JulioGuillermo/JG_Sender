@@ -113,7 +113,7 @@ func (p *History) Update(UserID string) {
 
 func (p *History) Open(id string) {
 	if p.SendView != nil {
-		go p.SendView(p.conf.UUID)
+		go p.SendView(id)
 	}
 	dev := connection.GetDevice(id)
 	if dev != nil {

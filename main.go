@@ -66,7 +66,7 @@ func run(th *material.Theme, w *app.Window, conf *config.Config) error {
 	notifier := notification.InitNotifier()
 	server.Notify = func(UserID, title, txt string) {
 		if history.Visibility() && history.UserID == UserID {
-			go server.SendUserView(conf.UUID)
+			go server.SendUserView(UserID)
 		} else {
 			dev := connection.GetDevice(UserID)
 			if dev != nil {
