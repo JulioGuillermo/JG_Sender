@@ -24,9 +24,10 @@ type Transfer struct {
 	ID       string
 	UserID   string
 	DateTime time.Time
+	MSG      string
 	In       bool
 	View     bool
-	MSG      string
+	Sended   bool
 	Error    error
 	File     *FileTransfer
 }

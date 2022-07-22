@@ -40,6 +40,11 @@ type Scanner struct {
 	progress float64
 	win      *app.Window
 
+	loading_anim_show outlay.Animation
+	loading_anim      *components.LoadingAnim
+	loading_visible   bool
+	loading_ctl       bool
+
 	card   *components.Card
 	appbar *component.AppBar
 	modal  *component.ModalLayer
@@ -64,6 +69,8 @@ func NewScannerScreen(th *material.Theme, conf *config.Config, src SNSource, w *
 		win:      w,
 		card:     components.NewSimpleCard(conf.BGColor, 20, 10, 10),
 	}
+	sn.loading_anim = components.NewLoadingAnim(20, 5, 5, time.Second, conf.BGPrimaryColor)
+	sn.loading_anim.Reset()
 
 	modal := component.NewModal()
 	sn.modal = modal
@@ -136,9 +143,23 @@ func (p *Scanner) Layout(th *material.Theme, gtx layout.Context, w *app.Window, 
 		if p.scanner.Running {
 			p.scanner.Stop()
 		} else {
+			p.loading_anim.Reset()
 			connection.InvalidateDevices()
 			go p.scanner.ScannAll(p.src.GetSubnets())
 		}
+	}
+
+	if p.scanner.Running && !p.loading_ctl {
+		p.loading_anim_show.Start(gtx.Now)
+		p.loading_anim_show.Duration = p.conf.AnimTime()
+		p.loading_visible = true
+		p.loading_ctl = true
+	} else if !p.scanner.Running && p.loading_ctl {
+		p.loading_ctl = false
+		p.loading_anim_show.Start(gtx.Now)
+		p.loading_anim_show.Duration = p.conf.AnimTime()
+	} else if !p.scanner.Running && !p.loading_ctl && !p.loading_anim_show.Animating(gtx) {
+		p.loading_visible = false
 	}
 
 	animPro := p.anim.Progress(gtx)
@@ -160,6 +181,33 @@ func (p *Scanner) Layout(th *material.Theme, gtx layout.Context, w *app.Window, 
 		gtx,
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			return p.appbar.Layout(gtx, th, "Connections", "...")
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			if p.loading_visible {
+				p.loading_anim.Color = conf.BGPrimaryColor
+				d := layout.Flex{
+					Axis:      layout.Vertical,
+					Alignment: layout.Middle,
+				}.Layout(
+					gtx,
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						probar := material.ProgressBar(th, float32(p.progress))
+						return probar.Layout(gtx)
+					}),
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return layout.UniformInset(3).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+							return p.loading_anim.Layout(gtx)
+						})
+					}),
+				)
+				progress := p.loading_anim_show.Progress(gtx)
+				if !p.loading_ctl {
+					progress = 1 - progress
+				}
+				d.Size.Y = int(progress * float32(d.Size.Y))
+				return d
+			}
+			return layout.Dimensions{}
 		}),
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 			return material.List(th, &p.list).Layout(

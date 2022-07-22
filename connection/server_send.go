@@ -110,6 +110,8 @@ func (p *Server) SendMSG(userID string, msg string) {
 		trans.Error = e
 		return
 	}
+
+	trans.Sended = true
 }
 
 func (p *Server) SendTrans(userID string, trans *Transfer) {
@@ -263,6 +265,8 @@ func (p *Server) SendTrans(userID string, trans *Transfer) {
 		}
 		trans.File.Index++
 	}
+
+	trans.Sended = true
 }
 
 func (p *Server) SendResources(userID string, resources []string) {

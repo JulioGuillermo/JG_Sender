@@ -46,9 +46,10 @@ type History struct {
 	openFile widget.Clickable
 	card     *components.Card
 
-	anim    outlay.Animation
-	visible bool
-	closing bool
+	loading_anim *components.LoadingAnim
+	anim         outlay.Animation
+	visible      bool
+	closing      bool
 
 	SendMSG       func(string, string)
 	SendRes       func(string, []string)
@@ -63,9 +64,10 @@ type InboxItem struct {
 
 func NewHistoryScreen(th *material.Theme, conf *config.Config, w *app.Window) *History {
 	history := &History{
-		conf: conf,
-		win:  w,
-		card: components.NewSimpleCard(conf.BGColor, 28, 10, 3),
+		conf:         conf,
+		win:          w,
+		card:         components.NewSimpleCard(conf.BGColor, 28, 10, 3),
+		loading_anim: components.NewLoadingAnim(10, 3, 5, time.Second, conf.BGPrimaryColor),
 	}
 
 	modal := component.NewModal()
@@ -426,6 +428,12 @@ func (p *History) renderFile(th *material.Theme, gtx layout.Context, element *co
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					/*title := material.Label(th, th.TextSize*0.7, FormatTime(element.DateTime))
 					return title.Layout(gtx)*/
+					if element.File.TransBytes != element.File.TotalBytes && element.Error == nil && !element.File.Canceled {
+						p.loading_anim.Color = p.conf.BGPrimaryColor
+						return layout.Inset{
+							Top: 5,
+						}.Layout(gtx, p.loading_anim.Layout)
+					}
 					if element.View && !element.In {
 						return components.NewIcon(th, gtx, config.ICOK, p.conf.FGColor, 20)
 					}
@@ -462,6 +470,12 @@ func (p *History) renderMSG(th *material.Theme, gtx layout.Context, element *con
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					/*date := material.Label(th, th.TextSize*0.7, FormatTime(element.DateTime))
 					return date.Layout(gtx)*/
+					if !element.Sended && element.Error == nil && !element.In {
+						p.loading_anim.Color = p.conf.BGPrimaryColor
+						return layout.Inset{
+							Top: 5,
+						}.Layout(gtx, p.loading_anim.Layout)
+					}
 					if element.View && !element.In && element.Error == nil {
 						return components.NewIcon(th, gtx, config.ICOK, p.conf.FGColor, 20)
 					}
