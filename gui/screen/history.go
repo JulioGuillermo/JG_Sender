@@ -73,7 +73,7 @@ func NewHistoryScreen(th *material.Theme, conf *config.Config, w *app.Window) *H
 	appbar.Title = "History"
 	appbar.NavigationLayout = func(gtx layout.Context) layout.Dimensions {
 		bls := material.ButtonLayout(th, &appbar.NavigationButton)
-		bls.CornerRadius = 25
+		bls.CornerRadius = ScreenBarHeight / 2
 		return bls.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return components.NewIcon(th, gtx, config.ICBack, conf.FGPrimaryColor, ScreenBarHeight)
 		})

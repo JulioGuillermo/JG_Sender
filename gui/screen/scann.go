@@ -70,7 +70,7 @@ func NewScannerScreen(th *material.Theme, conf *config.Config, src SNSource, w *
 	appbar.SetActions([]component.AppBarAction{{
 		Layout: func(gtx layout.Context, bg, fg color.NRGBA) layout.Dimensions {
 			bls := material.ButtonLayout(th, &sn.scan)
-			bls.CornerRadius = 25
+			bls.CornerRadius = ScreenBarHeight / 2
 			return bls.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				if sn.scanner.Running {
 					c := material.ProgressCircle(th, float32(sn.progress))

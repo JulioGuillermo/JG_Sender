@@ -28,6 +28,7 @@ type Subnetworks struct {
 	anim    outlay.Animation
 
 	appbar *component.AppBar
+	modal  *component.ModalLayer
 	card   *components.Card
 }
 
@@ -46,25 +47,34 @@ func NewSubnetworksScreen(th *material.Theme, conf *config.Config) *Subnetworks 
 	sn.list.List.Axis = layout.Vertical
 
 	modal := component.NewModal()
+	sn.modal = modal
 	appbar := component.NewAppBar(modal)
 	appbar.Title = "Subnetworks"
 	appbar.SetActions([]component.AppBarAction{
 		{
 			Layout: func(gtx layout.Context, bg, fg color.NRGBA) layout.Dimensions {
 				bls := material.ButtonLayout(th, &sn.add)
-				bls.CornerRadius = 25
+				bls.CornerRadius = ScreenBarHeight / 2
 				return bls.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					return components.NewIcon(th, gtx, config.ICAdd, conf.FGPrimaryColor, ScreenBarHeight)
 				})
+			},
+			OverflowAction: component.OverflowAction{
+				Name: "Add",
+				Tag:  &sn.add,
 			},
 		},
 		{
 			Layout: func(gtx layout.Context, bg, fg color.NRGBA) layout.Dimensions {
 				bls := material.ButtonLayout(th, &sn.update)
-				bls.CornerRadius = 25
+				bls.CornerRadius = ScreenBarHeight / 2
 				return bls.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					return components.NewIcon(th, gtx, config.ICUpdate, conf.FGPrimaryColor, ScreenBarHeight)
 				})
+			},
+			OverflowAction: component.OverflowAction{
+				Name: "Update",
+				Tag:  &sn.update,
 			},
 		},
 	}, []component.OverflowAction{})
@@ -135,7 +145,7 @@ func (p *Subnetworks) Layout(th *material.Theme, gtx layout.Context, w *app.Wind
 	paint.FillShape(gtx.Ops, conf.ScreenColor, rec.Op())
 
 	p.card.Color = conf.BGColor
-	return layout.Flex{
+	dim := layout.Flex{
 		Axis: layout.Vertical,
 	}.Layout(
 		gtx,
@@ -152,6 +162,8 @@ func (p *Subnetworks) Layout(th *material.Theme, gtx layout.Context, w *app.Wind
 			)
 		}),
 	)
+	p.modal.Layout(gtx, th)
+	return dim
 }
 
 func (p *Subnetworks) render(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config, index int) layout.Dimensions {
