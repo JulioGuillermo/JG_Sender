@@ -42,6 +42,7 @@ type Scanner struct {
 
 	card   *components.Card
 	appbar *component.AppBar
+	modal  *component.ModalLayer
 
 	layoutH layout.Flex
 	layoutV layout.Flex
@@ -65,9 +66,14 @@ func NewScannerScreen(th *material.Theme, conf *config.Config, src SNSource, w *
 	}
 
 	modal := component.NewModal()
+	sn.modal = modal
 	appbar := component.NewAppBar(modal)
 	appbar.Title = "Scanner"
 	appbar.SetActions([]component.AppBarAction{{
+		OverflowAction: component.OverflowAction{
+			Name: "Scanner ON/OFF",
+			Tag:  &sn.scan,
+		},
 		Layout: func(gtx layout.Context, bg, fg color.NRGBA) layout.Dimensions {
 			bls := material.ButtonLayout(th, &sn.scan)
 			bls.CornerRadius = ScreenBarHeight / 2
@@ -115,6 +121,17 @@ func NewScannerScreen(th *material.Theme, conf *config.Config, src SNSource, w *
 }
 
 func (p *Scanner) Layout(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config) layout.Dimensions {
+	for _, e := range p.appbar.Events(gtx) {
+		t, ok := e.(component.AppBarOverflowActionClicked)
+		if ok && t.Tag == &p.scan {
+			if p.scanner.Running {
+				p.scanner.Stop()
+			} else {
+				connection.InvalidateDevices()
+				go p.scanner.ScannAll(p.src.GetSubnets())
+			}
+		}
+	}
 	if p.scan.Clicked() {
 		if p.scanner.Running {
 			p.scanner.Stop()
@@ -139,7 +156,7 @@ func (p *Scanner) Layout(th *material.Theme, gtx layout.Context, w *app.Window, 
 
 	p.card.Color = conf.BGColor
 
-	return p.layoutV.Layout(
+	d := p.layoutV.Layout(
 		gtx,
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			return p.appbar.Layout(gtx, th, "Connections", "...")
@@ -154,6 +171,8 @@ func (p *Scanner) Layout(th *material.Theme, gtx layout.Context, w *app.Window, 
 			)
 		}),
 	)
+	p.modal.Layout(gtx, th)
+	return d
 }
 
 func (p *Scanner) render(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config, index int) layout.Dimensions {

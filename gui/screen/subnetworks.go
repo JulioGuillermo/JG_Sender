@@ -107,15 +107,30 @@ func (p *Subnetworks) New(sn string) *subnet {
 	return subnet
 }
 
+func (p *Subnetworks) UpdateSubNets() {
+	subnets := connection.GetIPS()
+	p.subnets = []*subnet{}
+	for _, s := range subnets {
+		p.New(s.String())
+	}
+}
+
 func (p *Subnetworks) Layout(th *material.Theme, gtx layout.Context, w *app.Window, conf *config.Config) layout.Dimensions {
+	for _, e := range p.appbar.Events(gtx) {
+		t, ok := e.(component.AppBarOverflowActionClicked)
+		if ok {
+			switch t.Tag {
+			case &p.add:
+				p.New("")
+			case &p.update:
+				p.UpdateSubNets()
+			}
+		}
+	}
 	if p.add.Clicked() {
 		p.New("")
 	} else if p.update.Clicked() {
-		subnets := connection.GetIPS()
-		p.subnets = []*subnet{}
-		for _, s := range subnets {
-			p.New(s.String())
-		}
+		p.UpdateSubNets()
 	}
 
 	animPro := p.anim.Progress(gtx)

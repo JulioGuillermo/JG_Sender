@@ -5,7 +5,7 @@ go 1.18
 require (
 	gioui.org v0.0.0-20220718084447-e711cbc004b2 // indirect
 	gioui.org/cpu v0.0.0-20210817075930-8d6a761490d2 // indirect
-	gioui.org/example v0.0.0-20220630144041-171a6b4847f1 // indirect
+	//gioui.org/example v0.0.0-20220630144041-171a6b4847f1 // indirect
 	gioui.org/shader v1.0.6 // indirect
 	gioui.org/x v0.0.0-20220711203002-4d04c4f9ff66 // indirect
 	git.wow.st/gmp/jni v0.0.0-20210610011705-34026c7e22d0 // indirect
